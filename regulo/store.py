@@ -24,7 +24,7 @@ __all__ = ["save", "load", "snapshot", "meta"]
 
 def meta(runner: Runner) -> Dict:
     """Build the metadata dictionary describing *runner*."""
-    from regulo.loss import Softmax
+    
 
     return {
         "version": __version__,
