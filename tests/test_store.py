@@ -1,6 +1,7 @@
 """Tests for save/load round-trips and version validation."""
 
 import json
+from importlib.metadata import version
 from pathlib import Path
 
 import numpy as np
@@ -13,6 +14,10 @@ from regulo.loss import Square
 from regulo.net import MLP
 from regulo.penalty import Ridge, Void
 from regulo.store import load, meta, save, snapshot
+
+
+def test_version_matches_package_metadata():
+    assert __version__ == version("regulo")
 
 
 def test_metafields():

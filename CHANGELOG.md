@@ -71,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`ddacc2a` — 2026-07-12)
 - Resolved ruff `F401` unused-import warning on `anbr.data.make_dgp3`
   in `demo/run_simulation.py` (`672bb76` — 2026-07-12)
+- Made `regulo.__version__` single source of truth between pyproject.toml and regulo 
+  package
 
 ### Removed
 

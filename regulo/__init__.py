@@ -15,6 +15,7 @@ Quick start
 >>> trainer.fit(X_train, y_train, seed=0)
 >>> preds = trainer.predict(X_test)
 """
+from importlib.metadata import PackageNotFoundError, version
 
 from regulo.adam import Adam
 from regulo.data import equicorr, synth
@@ -33,7 +34,10 @@ from regulo.penalty import (
 from regulo.score import Balanced, Mae, Metric, Mse, R2, Rmse
 from regulo.tune import Scaler, kfold, resolve, search
 
-__version__ = "0.2.0"
+try:
+    __version__ = version("regulo")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
 
 # store depends on __version__, so it must be imported last.
 from regulo.fit import Runner  # noqa: E402
