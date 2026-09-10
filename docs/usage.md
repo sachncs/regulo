@@ -30,7 +30,7 @@ pytest tests/test_fit.py -v
 ```python
 import numpy as np
 from regulo import (
-    Adam, MLP, Mse, Ridge, Runner, Scalar, Square, synth,
+    Adam, MLP, Mse, Ridge, Runner, Scaler, Square, synth,
 )
 
 x, y = synth(n=200, p=20, k=10, rho=0.25, noise=0.10, seed=42)

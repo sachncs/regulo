@@ -68,7 +68,7 @@ loading cannot execute arbitrary code.
 
 ```python
 from regulo import (
-    Adam, MLP, Ridge, Runner, Scalar, Square, search,
+    Adam, MLP, Ridge, Runner, Scaler, Square, search,
 )
 
 best, score = search(
