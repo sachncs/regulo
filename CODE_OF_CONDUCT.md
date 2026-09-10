@@ -58,9 +58,10 @@ representative at an online or offline event.
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-**[INSERT CONTACT METHOD]**.
+Instances of abusive, harassing, or otherwise unacceptable behavior may
+be reported to the community leaders responsible for enforcement at
+**sachncs@gmail.com**, or privately via GitHub's "Report a vulnerability"
+feature linked from the repository's Security tab.
 
 All complaints will be reviewed and investigated promptly and fairly.
 
