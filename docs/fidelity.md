@@ -8,11 +8,11 @@ This document compares every major component of the paper against its implementa
 
 | Component | Paper Definition | Implementation | Status |
 |---|---|---|---|
-| Ridge | `λ ‖W‖_F^2` | `Ridge(lambda_)` | **Exact** |
+| Ridge | `λ ‖W‖_F^2` | `Ridge(lam)` | **Exact** |
 | Lasso | `γ ‖W‖_1` | `Lasso(gamma)` | **Exact** |
 | Elastic Net | `α γ ‖W‖_1 + (1-α)/2 ‖W‖_F^2` | `ElasticNet(alpha, gamma)` | **Exact** |
-| Covridge | `λ_1 ‖C_{δ,n}^{1/2} W‖_F^2 + λ_2 ‖W‖_F^2` | `Covridge(lambda1, lambda2, c_delta_n)` | **Exact** |
-| Sparridge | `λ_1 ‖C_{δ,n}^{1/2} W‖_F^2 + γ ‖W‖_1` | `Sparridge(lambda1, gamma, c_delta_n)` | **Exact** |
+| Covridge | `λ_1 ‖C_{δ,n}^{1/2} W‖_F^2 + λ_2 ‖W‖_F^2` | `Covridge(lambda1, lambda2, gram)` | **Exact** |
+| Sparridge | `λ_1 ‖C_{δ,n}^{1/2} W‖_F^2 + γ ‖W‖_1` | `Sparridge(lambda1, gamma, gram)` | **Exact** |
 
 **Assumptions:**
 - The paper defines a single `C_{δ,n}` based on the input matrix `H`. In a multi-layer network, this matrix only matches the first-layer weight shape. We apply Covridge/Sparridge **only to the first layer**, documented as an assumption.
@@ -23,8 +23,8 @@ This document compares every major component of the paper against its implementa
 
 | Component | Paper | Implementation | Status |
 |---|---|---|---|
-| Regression hidden layers | 64 and 32 units | `layer_sizes=[p, 64, 32, 1]` | **Exact** |
-| Classification hidden layers | 8 and 4 units | `layer_sizes=[p, 8, 4, k]` | **Exact** |
+| Regression hidden layers | 64 and 32 units | `MLP(shape=[p, 64, 32, 1])` | **Exact** |
+| Classification hidden layers | 8 and 4 units | `MLP(shape=[p, 8, 4, k])` | **Exact** |
 | Activation | ReLU | `np.maximum(z, 0.0)` | **Exact** |
 | Output (regression) | Linear | Linear | **Exact** |
 | Output (classification) | Softmax | Softmax inside loss | **Exact** |
@@ -36,12 +36,12 @@ This document compares every major component of the paper against its implementa
 
 | Component | Paper | Implementation | Status |
 |---|---|---|---|
-| Optimizer | Adam (default settings) | `Adam(beta1=0.9, beta2=0.999, eps=1e-8)` | **Exact** |
-| Learning rate | Unspecified | `1e-3` | **Assumed** |
+| Optimizer | Adam (default settings) | `Adam(beta1=0.9, beta2=0.999, epsilon=1e-8)` | **Exact** |
+| Learning rate | Unspecified | `lr=1e-3` | **Assumed** |
 | Epochs | 500 | `epochs=500` | **Exact** |
-| Batch size (regression) | 32 | `batch_size=32` | **Exact** |
-| Batch size (classification) | 16 | `batch_size=16` | **Exact** |
-| Early stopping | Patience 10 (classification) | `early_stopping=True, patience=10` | **Exact** |
+| Batch size (regression) | 32 | `batch=32` | **Exact** |
+| Batch size (classification) | 16 | `batch=16` | **Exact** |
+| Early stopping | Patience 10 (classification) | `earlystop=True, patience=10` | **Exact** |
 
 ---
 
@@ -49,8 +49,8 @@ This document compares every major component of the paper against its implementa
 
 | Component | Paper | Implementation | Status |
 |---|---|---|---|
-| Regression | MSE | `MSELoss` | **Exact** |
-| Classification | Cross-entropy | `CrossEntropyLoss` (softmax + NLL) | **Exact** |
+| Regression | MSE | `regulo.loss.Square` | **Exact** |
+| Classification | Cross-entropy | `regulo.loss.Softmax` (softmax + NLL) | **Exact** |
 
 ---
 
@@ -58,15 +58,15 @@ This document compares every major component of the paper against its implementa
 
 | Component | Paper | Implementation | Status |
 |---|---|---|---|
-| DGP1 | (200, 20, 10) | `synth` | **Exact** |
-| DGP2 | (1000, 200, 100) | `synth(n=1000, p=200, k=100, ...)` | **Exact** |
-| DGP3 | (500, 2000, 100) | `synth(n=500, p=2000, k=100, ...)` | **Exact** |
+| DGP1 | (200, 20, 10) | `regulo.data.synth(n=200, p=20, k=10, ...)` | **Exact** |
+| DGP2 | (1000, 200, 100) | `regulo.data.synth(n=1000, p=200, k=100, ...)` | **Exact** |
+| DGP3 | (500, 2000, 100) | `regulo.data.synth(n=500, p=2000, k=100, ...)` | **Exact** |
 | Correlation | ρ ∈ {0.25, 0.75} | Parameter `rho` | **Exact** |
-| Noise | σ ∈ {0.10, 2.00} | Parameter `sigma_noise` | **Exact** |
-| Linear signal | `y = Xθ + ε` | `nonlinear=False` | **Exact** |
-| Nonlinear signal | `y = Σ θ_j sin(x_j) + ε` | `nonlinear=True` | **Exact** |
-| Train/test split | 75/25 | `int(0.75 * n)` | **Exact** |
-| Standardization | Training stats only | `StandardScaler` inside CV | **Exact** |
+| Noise | σ ∈ {0.10, 2.00} | Parameter `noise` | **Exact** |
+| Linear signal | `y = Xθ + ε` | `regulo.data.synth(nonlinear=False)` | **Exact** |
+| Nonlinear signal | `y = Σ θ_j sin(x_j) + ε` | `regulo.data.synth(nonlinear=True)` | **Exact** |
+| Train/test split | 75/25 | `int(0.75 * n)` via `split` in `demo/run_simulation.py` | **Exact** |
+| Standardization | Training stats only | `regulo.tune.Scaler` inside CV | **Exact** |
 
 ---
 
@@ -74,9 +74,8 @@ This document compares every major component of the paper against its implementa
 
 | Component | Paper | Implementation | Status |
 |---|---|---|---|
-| k-fold | 5-fold | `KFold(n_splits=5)` | **Exact** |
-| Simulation grid | {0.001, 0.01, 0.1, 0.5, 0.9} | `SIM_GRID` | **Exact** |
-| Classification grid | [0.0001, 1.0] | `np.linspace(0.0001, 1.0, 5)` | **Exact** |
+| k-fold | 5-fold | `regulo.tune.kfold(n, folds=5, seed=...)` | **Exact** |
+| Simulation grid | {0.001, 0.01, 0.1, 0.5, 0.9} | `GRID` in `demo/run_simulation.py` | **Exact** |
 | Grid evaluation | All combinations | Nested loops over grid | **Exact** |
 
 ---
@@ -85,11 +84,11 @@ This document compares every major component of the paper against its implementa
 
 | Metric | Paper | Implementation | Status |
 |---|---|---|---|
-| MSE | Reported | `metrics.mean_squared_error` | **Exact** |
-| MAE | Reported | `metrics.mean_absolute_error` | **Exact** |
-| RMSE | Reported | `metrics.root_mean_squared_error` | **Exact** |
-| R² | Reported | `metrics.r2_score` | **Exact** |
-| Balanced accuracy | Reported | `metrics.balanced_accuracy_score` | **Exact** |
+| MSE | Reported | `regulo.score.Mse` | **Exact** |
+| MAE | Reported | `regulo.score.Mae` | **Exact** |
+| RMSE | Reported | `regulo.score.Rmse` | **Exact** |
+| R² | Reported | `regulo.score.R2` | **Exact** |
+| Balanced accuracy | Reported | `regulo.score.Balanced` | **Exact** |
 
 ---
 
@@ -97,10 +96,14 @@ This document compares every major component of the paper against its implementa
 
 | Experiment | Paper | Implementation | Status |
 |---|---|---|---|
-| UCI Energy | 768 samples, 8 features | `fetch_openml(name="energy-efficiency")` | **Approximate** |
-| GSE9476 | 64 samples, 22,000 genes, ANOVA→2000 | `fetch_openml(data_id=1120)` surrogate | **Approximate** |
+| UCI Energy | 768 samples, 8 features | Removed in v0.1.x; see `docs/limits.md` §2 | **Removed** |
+| GSE9476 | 64 samples, 22,000 genes, ANOVA→2000 | Removed in v0.1.x; see `docs/limits.md` §2 | **Removed** |
 
-**Note:** The paper does not provide direct download URLs. We use OpenML surrogates, which should be functionally equivalent.
+**Note:** Earlier versions of this package included real-data loaders
+backed by `fetch_openml`.  These were dropped when the library was
+rewritten in pure NumPy + SciPy with no scikit-learn dependency; see
+`docs/limits.md` §2 for the rationale.  Users supply their own arrays
+directly via `regulo.tune.Scaler` for standardization.
 
 ---
 
