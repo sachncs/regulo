@@ -51,6 +51,8 @@ def save(runner: Runner, path: str) -> None:
       * ``weights.npz`` -- one ``w{i}`` array per weight matrix
       * ``biases.npz`` -- one ``b{i}`` array per bias vector
       * ``adam.npz`` -- ``mean`` / ``variance`` / ``clock`` per group
+      * ``gram.npy`` -- the geometry-aware Gram matrix (when the
+        penalty is Covridge or Sparridge)
     """
     p = Path(path)
     p.mkdir(parents=True, exist_ok=True)
@@ -81,6 +83,11 @@ def save(runner: Runner, path: str) -> None:
     data["clock"] = np.array(runner.adam.clock)
     np.savez(p / "adam.npz", **data)
 
+    geom = getattr(runner.penalty, "csqrt", None)
+    if geom is not None:
+        gram = geom @ geom
+        np.save(p / "gram.npy", gram)
+
 
 def snapshot(runner: Runner) -> Dict:
     """Alias for :func:`meta`.  Return the metadata dictionary."""
@@ -102,7 +109,7 @@ def load(path: str) -> Runner:
     mlp = MLP(data["shape"])
     cls = losslookup(data["loss"])
     loss = cls(**data["lossargs"])
-    penalty = penaltylookup(data)
+    penalty = penaltylookup(data, p)
     adam = Adam(**data["adam"])
 
     weights = np.load(p / "weights.npz")
@@ -159,15 +166,19 @@ def losslookup(name: str):
     return table[name]
 
 
-def penaltylookup(data: Dict) -> Penalty:
+def penaltylookup(data: Dict, path: Path) -> Penalty:
     name = data["penalty"]
     hp = dict(data["penaltyargs"])
     if name in ("covridge", "sparridge"):
-        # Re-derive a synthetic gram matrix from shape[0]; the
-        # user's actual training data was used to build the original,
-        # so the loaded penalty applies only to the first layer.
-        p = data["shape"][0]
-        hp["gram"] = np.eye(p)
+        gram_path = path / "gram.npy"
+        if not gram_path.exists():
+            raise ValueError(
+                f"Model trained with {name!r} but the saved "
+                "directory has no gram.npy.  Re-train with the "
+                "current regulo version or supply a restore_gram=False "
+                "load path."
+            )
+        hp["gram"] = np.load(gram_path)
     cls = REGISTRY[name]
     return cls(**hp)
 

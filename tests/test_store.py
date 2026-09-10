@@ -12,7 +12,7 @@ from regulo.adam import Adam
 from regulo.fit import Runner
 from regulo.loss import Square
 from regulo.net import MLP
-from regulo.penalty import Ridge, Void
+from regulo.penalty import Covridge, Ridge, Sparridge, Void
 from regulo.store import load, meta, save, snapshot
 
 
@@ -141,3 +141,61 @@ def test_loadmissingadam(tmp_path: Path):
     for group in loaded.adam.mean:
         for buf in loaded.adam.mean[group]:
             assert buf is None
+
+
+def test_saveloadpreservescovridgegram(tmp_path: Path):
+    rng = np.random.default_rng(0)
+    x = rng.standard_normal((20, 4))
+    gram = (x.T @ x) / 20 + 1e-4 * np.eye(4)
+    penalty = Covridge(lambda1=0.01, lambda2=0.001, gram=gram)
+    runner = Runner(
+        MLP([4, 5, 1], seed=0),
+        Square(),
+        penalty,
+        Adam(lr=1e-2),
+        epochs=1,
+    )
+    runner.fit(x, rng.standard_normal((20, 1)), seed=0)
+
+    target = tmp_path / "covridge_model"
+    save(runner, str(target))
+    assert (target / "gram.npy").exists()
+
+    loaded = load(str(target))
+    np.testing.assert_allclose(loaded.penalty.csqrt, penalty.csqrt)
+
+
+def test_saveloadpreservessparridgegram(tmp_path: Path):
+    rng = np.random.default_rng(0)
+    x = rng.standard_normal((20, 4))
+    gram = (x.T @ x) / 20 + 1e-4 * np.eye(4)
+    penalty = Sparridge(lambda1=0.01, gamma=0.001, gram=gram)
+    runner = Runner(
+        MLP([4, 5, 1], seed=0),
+        Square(),
+        penalty,
+        Adam(lr=1e-2),
+        epochs=1,
+    )
+    runner.fit(x, rng.standard_normal((20, 1)), seed=0)
+
+    target = tmp_path / "sparridge_model"
+    save(runner, str(target))
+    assert (target / "gram.npy").exists()
+
+    loaded = load(str(target))
+    np.testing.assert_allclose(loaded.penalty.csqrt, penalty.csqrt)
+
+
+def test_loadraiseswhencovridgegrammissing(tmp_path: Path):
+    runner = Runner(MLP([3, 4, 1]), Square(), Void(), Adam())
+    target = tmp_path / "stale"
+    save(runner, str(target))
+    metapath = target / "meta.json"
+    data = json.loads(metapath.read_text())
+    data["penalty"] = "covridge"
+    data["penaltyargs"] = {"lambda1": 0.01, "lambda2": 0.001}
+    metapath.write_text(json.dumps(data))
+
+    with pytest.raises(ValueError, match="gram.npy"):
+        load(str(target))
