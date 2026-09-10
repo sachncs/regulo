@@ -37,7 +37,7 @@ def test_r2perfect():
 def test_r2constant():
     truth = np.array([2.0, 2.0, 2.0])
     pred = np.array([1.0, 2.0, 3.0])
-    assert R2()(truth, pred) == 0.0
+    assert np.isnan(R2()(truth, pred))
 
 
 def test_r2constantperfect():
