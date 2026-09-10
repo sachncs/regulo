@@ -51,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Corrected GitHub username from `sachn-cs` to `sachncs` across README,
-  CHANGELOG, CONTRIBUTING, pyproject.toml, FUNDING.yml, and
+  CHANGELOG, CONTRIBUTING, pyproject.toml, and
   getting-started.md (`59ab064` — 2026-07-11)
 - Updated LICENSE copyright holder to `Sachin` (`c73e254` — 2026-07-11)
 - Bumped mypy `python_version` from `"3.10"` to `"3.12"` in
@@ -100,8 +100,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CHANGELOG.md following Keep a Changelog format
   (`5fd67e7`..`e519252`)
 - Comprehensive README with badges, usage examples, and project structure
-  (`5fd67e7`..`e519252`)
-- FUNDING.yml for sponsorship configuration
   (`5fd67e7`..`e519252`)
 
 ### Changed
