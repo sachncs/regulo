@@ -9,9 +9,12 @@ Edge-case conventions
 * **Empty arrays.**  Functions that compute means (MSE, MAE, RMSE)
   raise ``ZeroDivisionError`` or return ``NaN`` if passed empty
   inputs, consistent with ``numpy.mean``.
-* **Perfect predictions (R-squared).**  When ``sstot == 0``
-  (constant target), R-squared is ``1.0`` if the residuals are
-  also zero, otherwise ``0.0``.
+* **R-squared edge cases.**  When ``sstot == 0`` (constant
+  target), R-squared is ``1.0`` if the residuals are also zero
+  and ``float('nan')`` otherwise -- the standard convention
+  shared with scikit-learn; ``np.mean`` in
+  :func:`regulo.tune.search` is NaN-aware so degenerate folds
+  do not silently report ``0.0``.
 * **No true samples for a class (balanced accuracy).**  Classes
   present only in ``y_pred`` are silently ignored; if ``y_true`` is
   empty the return value is ``0.0``.
@@ -85,8 +88,14 @@ class R2(Metric):
     ``SS_tot = sum((y - mean(y))^2)``.
 
     Edge cases:
-    * If ``SS_tot == 0`` and ``SS_res == 0``, returns ``1.0``.
-    * If ``SS_tot == 0`` and ``SS_res > 0``, returns ``0.0``.
+    * If ``SS_tot == 0`` and ``SS_res == 0``, returns ``1.0``
+      (perfect fit on a constant target).
+    * If ``SS_tot == 0`` and ``SS_res > 0``, returns
+      ``float('nan')`` -- the formula ``1 - ssres / sstot``
+      divides by zero, so any finite default would mask a
+      degenerate fold.  ``numpy.mean`` in
+      :func:`regulo.tune.search` is NaN-aware, so a single
+      NaN-fold does not silently report ``0.0``.
     """
 
     name = "r2"
@@ -95,7 +104,7 @@ class R2(Metric):
         ssres = float(np.sum((truth - pred) ** 2))
         sstot = float(np.sum((truth - np.mean(truth)) ** 2))
         if sstot == 0.0:
-            return 1.0 if ssres == 0.0 else 0.0
+            return 1.0 if ssres == 0.0 else float("nan")
         return 1.0 - ssres / sstot
 
 
