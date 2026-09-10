@@ -80,7 +80,7 @@ print("test MSE:", Mse()(ytest, runner.predict(xtest)))
 
 ```python
 from regulo import (
-    Adam, MLP, Ridge, Runner, Scalar, Square, search, synth,
+    Adam, MLP, Ridge, Runner, Scaler, Square, search, synth,
 )
 
 x, y = synth(n=200, p=20, k=10, rho=0.25, noise=0.10, seed=0)
