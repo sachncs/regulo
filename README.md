@@ -12,6 +12,10 @@ defaults.
 [![CI](https://img.shields.io/github/actions/workflow/status/sachncs/regulo/ci.yml?branch=master)](https://github.com/sachncs/regulo/actions)
 [![PyPI](https://img.shields.io/pypi/v/regulo)](https://pypi.org/project/regulo/)
 
+<p align="left">
+  <img src="assets/logo.svg" alt="regulo" width="120">
+</p>
+
 ## What this is
 
 A reference implementation of the six penalties in Qasim & Javed

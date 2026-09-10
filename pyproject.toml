@@ -55,6 +55,7 @@ Repository = "https://github.com/sachncs/regulo"
 Issues = "https://github.com/sachncs/regulo/issues"
 Documentation = "https://github.com/sachncs/regulo/tree/master/docs"
 Changelog = "https://github.com/sachncs/regulo/blob/master/CHANGELOG.md"
+Logo = "https://raw.githubusercontent.com/sachncs/regulo/master/assets/logo.svg"
 
 [tool.setuptools.packages.find]
 where = ["."]
