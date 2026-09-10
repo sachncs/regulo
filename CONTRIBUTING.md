@@ -125,7 +125,7 @@ The optional scope should be the module affected:
 
 3. **Run type checking**:
    ```bash
-   mypy anbr tests demo
+   mypy regulo tests demo
    ```
 
 4. **Update documentation** if your change affects the API or user-facing behavior
@@ -166,7 +166,7 @@ The optional scope should be the module affected:
 ### Docstring Format
 
 Use Google-style docstrings with `Args`, `Returns`, and `Raises`
-sections -- this matches the convention used throughout `anbr/`:
+sections -- this matches the convention used throughout `regulo/`:
 
 ```python
 def regularize(self, weights: np.ndarray) -> float:

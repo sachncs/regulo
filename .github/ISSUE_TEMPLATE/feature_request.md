@@ -26,10 +26,10 @@ Describe the use case that would benefit from this feature:
 
 ```python
 # Example of how this feature would be used
-from anbr.regularizers import Covridge
+from regulo import Covridge
 
 # Desired usage
-reg = Covridge(lam1=0.01, lam2=0.001, adaptive=True)  # New feature
+reg = Covridge(lambda1=0.01, lambda2=0.001, adaptive=True)  # New feature
 ```
 
 ## Impact
