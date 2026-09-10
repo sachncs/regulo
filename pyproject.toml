@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "regulo"
+version = "0.2.0"
+description = "Pure Python reproduction of Adaptive Norm-Based Regularization for Neural Networks"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+authors = [
+    {name = "Sachin", email = "sachncs@gmail.com"},
+]
+keywords = [
+    "neural-networks",
+    "regularization",
+    "adaptive-norm",
+    "covridge",
+    "sparridge",
+    "machine-learning",
+    "deep-learning",
+    "numpy",
+    "research-reproduction",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.23",
+    "scipy>=1.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/sachncs/regulo"
+Repository = "https://github.com/sachncs/regulo"
+Issues = "https://github.com/sachncs/regulo/issues"
+Documentation = "https://github.com/sachncs/regulo/tree/master/docs"
+Changelog = "https://github.com/sachncs/regulo/blob/master/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["regulo*"]
+
+[tool.setuptools.package-data]
+regulo = ["py.typed"]
+
+[tool.black]
+line-length = 80
+
+[tool.isort]
+profile = "black"
+line_length = 80
+known_first_party = ["regulo"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = false
