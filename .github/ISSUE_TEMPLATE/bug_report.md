@@ -45,7 +45,7 @@ Paste error output here
 ```python
 # Provide a minimal code example that reproduces the issue
 import numpy as np
-from anbr.network import Network
+from regulo import MLP
 
 # Your code here
 ```

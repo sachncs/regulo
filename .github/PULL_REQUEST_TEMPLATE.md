@@ -38,7 +38,7 @@ pytest tests/ -v
 
 - [ ] My code follows the project's coding style (PEP 8, 80-char lines)
 - [ ] I have run `black .` and `isort .` to format my code
-- [ ] I have run `mypy anbr tests demo` for type checking
+- [ ] I have run `mypy regulo tests demo` for type checking
 - [ ] I have updated documentation (if applicable)
 - [ ] I have added tests that prove my fix/feature works
 - [ ] My changes generate no new warnings
