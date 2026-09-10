@@ -22,6 +22,34 @@ hyperparameter grid search.  Every numerical choice is exposed,
 every gradient is auditable, and every run is reproducible with a
 single integer seed.
 
+## Why regulo?
+
+* **Category.**  Covariance-aware regularizers for small MLPs --
+  specifically the two *new* penalties from Qasim & Javed (2024),
+  `Covridge` and `Sparridge`, that are not available in
+  scikit-learn, PyTorch, or JAX out of the box.
+* **Who is it for.**  Researchers and students reproducing the
+  paper's experiments, and engineers who want a transparent
+  regularizer without autograd or framework magic.
+* **Why it is different.**  Every penalty file fits in one module,
+  every gradient is analytical, and every value is auditable in a
+  REPL.  Covridge / Sparridge apply geometry-aware shrinkage
+  along the eigenvectors of the empirical Gram matrix
+  `C = (1/n) X^T X + delta I_p`; they outperform plain ridge and
+  lasso on correlated or high-dimensional inputs.
+* **How the pieces fit together.**  Input `X` flows through a
+  Gram matrix into the penalty's spectral decomposition, which
+  feeds the gradient dispatched through hand-written
+  back-propagation into Adam:
+
+      X  --[X^T X / n + delta I_p]-->  Gram
+                                        |
+                                        v
+                                    Penalties (Covridge, Sparridge)
+                                        |
+                                        v
+      Loss (Square / Softmax)  -->  MLP forward / backward  -->  Adam step
+
 ## What this is NOT
 
 * Not a production-grade deep learning framework.  See

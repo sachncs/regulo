@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Rebuilt README with centered header, badge block, Quick Start
   (CLI + Python API), Code Style, Commit Conventions, and Tech Stack
   subsections (`ecb68ad` — 2026-07-11)
+- New "Why regulo?" section in the README positioning the project,
+  its audience, and a text-based gradient-flow diagram so new
+  visitors see the value proposition within 10 seconds
 - Refined docstrings across `anbr/cv.py`, `anbr/data.py`, `anbr/losses.py`,
   `anbr/metrics.py`, `anbr/network.py`, `anbr/optimizer.py`,
   `anbr/trainer.py`, and `tests/__init__.py` -- documented the `1/N`
