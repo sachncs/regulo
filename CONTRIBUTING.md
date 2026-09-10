@@ -25,12 +25,12 @@ Please read it before contributing.
 1. **Fork** the repository on GitHub
 2. **Clone** your fork locally:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/adaptive-norm-based-regularization.git
-   cd adaptive-norm-based-regularization
+   git clone https://github.com/YOUR_USERNAME/regulo.git
+   cd regulo
    ```
 3. **Add upstream remote**:
    ```bash
-   git remote add upstream https://github.com/sachncs/adaptive-norm-based-regularization.git
+   git remote add upstream https://github.com/sachncs/regulo.git
    ```
 4. **Create a branch** for your changes:
    ```bash

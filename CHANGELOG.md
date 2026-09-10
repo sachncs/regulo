@@ -144,6 +144,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code formatting with black and isort
 - Type checking with mypy
 
-[Unreleased]: https://github.com/sachncs/adaptive-norm-based-regularization/compare/v0.1.1...HEAD
-[0.1.1]: https://github.com/sachncs/adaptive-norm-based-regularization/compare/v0.1.0...v0.1.1
-[0.1.0]: https://github.com/sachncs/adaptive-norm-based-regularization/releases/tag/v0.1.0
+[Unreleased]: https://github.com/sachncs/regulo/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/sachncs/regulo/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/sachncs/regulo/releases/tag/v0.1.0
