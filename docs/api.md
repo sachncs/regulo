@@ -1,5 +1,11 @@
 # API Reference
 
+The public training lifecycle is represented by `TrainingConfig`,
+`TrainingResult`, and `Checkpoint`; validation and persistence failures use
+`ValidationError` and `SerializationError`. See
+[the engineering contract](engineering.md) for naming, compatibility, and
+reproducibility policies.
+
 ## Penalties (`regulo.penalty`)
 
 ### `class Penalty(ABC)`

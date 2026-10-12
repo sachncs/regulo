@@ -55,6 +55,7 @@ Implement the :class:`Penalty` interface:
 from regulo.penalty import Penalty
 import numpy as np
 
+
 class MyPenalty(Penalty):
     name = "mine"
     hp = ("weight",)
@@ -63,7 +64,7 @@ class MyPenalty(Penalty):
         self.weight = weight
 
     def value(self, w, layer):
-        return self.weight * float(np.sum(w ** 2))
+        return self.weight * float(np.sum(w**2))
 
     def grad(self, w, layer):
         return 2.0 * self.weight * w
@@ -73,6 +74,7 @@ Then add it to :data:`regulo.penalty.REGISTRY`:
 
 ```python
 from regulo.penalty import REGISTRY
+
 REGISTRY["mine"] = MyPenalty
 ```
 

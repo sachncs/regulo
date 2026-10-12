@@ -49,12 +49,13 @@ source venv/bin/activate   # Linux/macOS
 pip install -e ".[dev]"
 
 # Install code quality tools
-pip install black isort mypy
+pip install mypy ruff
 ```
 
 ## Branch Naming
 
-Use descriptive branch names with a type prefix:
+Use descriptive branch names with a type prefix. Automation-created branches
+use the `codex/` prefix.
 
 | Prefix | Purpose | Example |
 |--------|---------|---------|
@@ -146,6 +147,7 @@ The optional scope should be the module affected:
 - Add tests for new functionality
 - Update documentation for API changes
 - Maintain or improve test coverage
+- Add malformed-input, checkpoint, and deterministic-seed tests for numerical changes
 
 ### Review Process
 
@@ -158,10 +160,10 @@ The optional scope should be the module affected:
 ### Code Style
 
 - Follow **PEP 8** with an **80-character line limit**
-- Use **black** for automatic formatting
-- Use **isort** for import sorting (profile: "black", line_length: 80)
+- Use **ruff format** for automatic formatting and import sorting
 - Use **type hints** on all public APIs
 - Write **docstrings** for all public classes and functions
+- Follow the naming and state rules in [docs/engineering.md](docs/engineering.md)
 
 ### Docstring Format
 
@@ -192,6 +194,7 @@ itself.
 ```python
 from typing import Optional
 
+
 def train(
     X: np.ndarray,
     y: np.ndarray,
@@ -216,13 +219,13 @@ def train(
 pytest tests/ -v
 
 # Run specific test file
-pytest tests/test_regularizers.py -v
+pytest tests/test_penalty.py -v
 
 # Run with coverage
 pytest tests/ -v --tb=short
 
 # Run integration tests only
-pytest tests/test_integration.py -v
+pytest tests/test_fit.py -v
 ```
 
 ## Documentation

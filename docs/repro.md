@@ -16,7 +16,13 @@ pip install -e .
 ```python
 import numpy as np
 from regulo import (
-    Adam, ElasticNet, Mse, MLP, Runner, Square, synth,
+    Adam,
+    ElasticNet,
+    Mse,
+    MLP,
+    Runner,
+    Square,
+    synth,
 )
 
 x, y = synth(n=200, p=20, k=10, rho=0.25, noise=0.10, seed=0)
@@ -68,15 +74,22 @@ loading cannot execute arbitrary code.
 
 ```python
 from regulo import (
-    Adam, MLP, Ridge, Runner, Scaler, Square, search,
+    Adam,
+    MLP,
+    Ridge,
+    Runner,
+    Scaler,
+    Square,
+    search,
 )
 
 best, score = search(
-    xtrain, ytrain,
+    xtrain,
+    ytrain,
     shape=[20, 64, 32, 1],
     method="ridge",
     grid=[{"lam": v} for v in (1e-3, 1e-2, 1e-1)],
-    loss_fn=Square(),
+    loss=Square(),
     folds=5,
     epochs=200,
     seed=0,

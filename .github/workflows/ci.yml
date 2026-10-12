@@ -48,3 +48,23 @@ jobs:
         run: |
           pip install build
           python -m build
+
+      - name: Run demo smoke test
+        run: python -m pytest tests/test_demo.py
+
+  site:
+    name: site
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test -- --run

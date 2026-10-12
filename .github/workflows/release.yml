@@ -4,21 +4,42 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 jobs:
-  publish:
-    name: publish to PyPI
+  build-and-publish:
+    name: build, verify, and publish
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
+      contents: read
       id-token: write
 
     steps:
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: wheel-*
-          path: dist
+      - uses: actions/checkout@v4
 
-      - uses: pypa/gh-action-pypi-publish@v2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Verify wheel in a clean environment
+        run: |
+          python -m venv /tmp/regulo-wheel-check
+          /tmp/regulo-wheel-check/bin/python -m pip install dist/*.whl
+          /tmp/regulo-wheel-check/bin/python - <<'PY'
+          import numpy as np
+          import regulo
+
+          model = regulo.MLP([2, 3, 1], seed=0)
+          assert model(np.zeros((2, 2))).shape == (2, 1)
+          print(regulo.__version__)
+          PY
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/

@@ -36,7 +36,8 @@ single integer seed.
   paper's experiments, and engineers who want a transparent
   regularizer without autograd or framework magic.
 * **Why it is different.**  Every penalty file fits in one module,
-  every gradient is analytical, and every value is auditable in a
+  every smooth gradient is analytical (non-smooth penalties use explicit
+  subgradients), and every value is auditable in a
   REPL.  Covridge / Sparridge apply geometry-aware shrinkage
   along the eigenvectors of the empirical Gram matrix
   `C = (1/n) X^T X + delta I_p`; they outperform plain ridge and
@@ -56,7 +57,7 @@ single integer seed.
 
 ## What this is NOT
 
-* Not a production-grade deep learning framework.  See
+* Not a production-serving deep learning framework.  See
   [docs/limits.md](docs/limits.md).
 * Not GPU-accelerated.  All computation runs on CPU via NumPy.
 * Not a hyperparameter-search framework.  Only exhaustive grid
@@ -87,7 +88,13 @@ That's it -- no scikit-learn, no pandas.
 ```python
 import numpy as np
 from regulo import (
-    Adam, MLP, Ridge, Runner, Square, synth, Mse,
+    Adam,
+    MLP,
+    Ridge,
+    Runner,
+    Square,
+    synth,
+    Mse,
 )
 
 x, y = synth(n=200, p=20, k=10, rho=0.25, noise=0.10, seed=0)
@@ -112,12 +119,20 @@ print("test MSE:", Mse()(ytest, runner.predict(xtest)))
 
 ```python
 from regulo import (
-    Adam, MLP, Ridge, Runner, Scaler, Square, search, synth,
+    Adam,
+    MLP,
+    Ridge,
+    Runner,
+    Scaler,
+    Square,
+    search,
+    synth,
 )
 
 x, y = synth(n=200, p=20, k=10, rho=0.25, noise=0.10, seed=0)
 best, score = search(
-    x, y,
+    x,
+    y,
     shape=[20, 64, 32, 1],
     method="ridge",
     grid=[{"lam": v} for v in (1e-3, 1e-2, 1e-1, 0.5)],

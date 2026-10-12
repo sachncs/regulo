@@ -30,7 +30,14 @@ pytest tests/test_fit.py -v
 ```python
 import numpy as np
 from regulo import (
-    Adam, MLP, Mse, Ridge, Runner, Scaler, Square, synth,
+    Adam,
+    MLP,
+    Mse,
+    Ridge,
+    Runner,
+    Scaler,
+    Square,
+    synth,
 )
 
 x, y = synth(n=200, p=20, k=10, rho=0.25, noise=0.10, seed=42)
@@ -60,7 +67,13 @@ print(Mse()(ytest, runner.predict(xtest)))
 ```python
 import numpy as np
 from regulo import (
-    Adam, Balanced, Lasso, MLP, Runner, Scaler, Softmax,
+    Adam,
+    Balanced,
+    Lasso,
+    MLP,
+    Runner,
+    Scaler,
+    Softmax,
 )
 
 rng = np.random.default_rng(0)
@@ -89,7 +102,8 @@ print("balanced accuracy:", Balanced()(y, preds))
 from regulo import search
 
 best, score = search(
-    x, y,
+    x,
+    y,
     shape=[10, 64, 32, 3],
     method="lasso",
     grid=[{"gamma": v} for v in (1e-3, 1e-2, 1e-1)],

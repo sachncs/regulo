@@ -46,7 +46,13 @@ synthetic DGP and prints MSE mean / standard deviation.
 ```python
 import numpy as np
 from regulo import (
-    Adam, MLP, Ridge, Runner, Square, synth, Mse,
+    Adam,
+    MLP,
+    Ridge,
+    Runner,
+    Square,
+    synth,
+    Mse,
 )
 
 x, y = synth(n=200, p=20, k=10, rho=0.25, noise=0.10, seed=0)
@@ -69,17 +75,17 @@ print("test MSE:", Mse()(ytest, runner.predict(xtest)))
 
 ## Reproducing a paper experiment
 
-See [docs/repro.md](docs/repro.md) for the full reproduction
+See [the reproduction recipe](repro.md) for the full reproduction
 recipe.
 
 ## Next steps
 
-* [docs/api.md](docs/api.md) -- full API reference
-* [docs/architecture.md](docs/architecture.md) -- module map and
+* [api.md](api.md) -- full API reference
+* [architecture.md](architecture.md) -- module map and
   design decisions
-* [docs/math.md](docs/math.md) -- equation-by-equation mapping to
+* [math.md](math.md) -- equation-by-equation mapping to
   the paper
-* [docs/limits.md](docs/limits.md) -- explicit limitations
+* [limits.md](limits.md) -- explicit limitations
 
 ## Troubleshooting
 
