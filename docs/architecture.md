@@ -25,38 +25,13 @@ regulo/
 
 ## Data flow
 
-```
-[Data Source]
-    |
-    v
-[synth(...) or user-provided X, y]
-    |
-    v
-[Scaler.fit_transform on train]
-    |
-    v
-[Gram matrix] --> [resolve(method, hp, xtrain)]
-    |
-    v
-[Penalty subclass]   <--  Penalty.applies(layer)
-    |                       ^
-    v                       |
-[MLP.__call__]              |
-    |                       |
-    v                       |
-[Runner.fit] ---------------+
-    |
-    +-- Mini-batch sampling
-    +-- Forward pass (cache pre, post)
-    +-- Loss + penalty value (only where applies)
-    +-- Loss + penalty gradient (only where applies)
-    +-- Adam step
-    +-- NaN guard
-    +-- Validation / earlystop
-    |
-    v
-[Metrics: Mse, Mae, Rmse, R2, Balanced]
-```
+The data flow is deliberately linear. Data is generated or supplied by the
+caller, standardized on the training split, and used to construct the Gram
+matrix. `resolve` creates the selected `Penalty` subclass, which advertises
+whether it applies to each layer. `Runner.fit` then performs mini-batch
+sampling, an explicit forward pass, loss and penalty evaluation, an explicit
+backward pass, the Adam update, and the NaN/validation guards before metrics
+are calculated.
 
 ## Key design decisions
 

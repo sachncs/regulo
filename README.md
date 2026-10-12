@@ -10,7 +10,6 @@ defaults.
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![CI](https://img.shields.io/github/actions/workflow/status/sachncs/regulo/ci.yml?branch=master)](https://github.com/sachncs/regulo/actions)
-[![PyPI](https://img.shields.io/pypi/v/regulo)](https://pypi.org/project/regulo/)
 
 <p align="left">
   <img src="assets/logo.svg" alt="regulo" width="120">
@@ -42,18 +41,10 @@ single integer seed.
   along the eigenvectors of the empirical Gram matrix
   `C = (1/n) X^T X + delta I_p`; they outperform plain ridge and
   lasso on correlated or high-dimensional inputs.
-* **How the pieces fit together.**  Input `X` flows through a
-  Gram matrix into the penalty's spectral decomposition, which
-  feeds the gradient dispatched through hand-written
-  back-propagation into Adam:
-
-      X  --[X^T X / n + delta I_p]-->  Gram
-                                        |
-                                        v
-                                    Penalties (Covridge, Sparridge)
-                                        |
-                                        v
-      Loss (Square / Softmax)  -->  MLP forward / backward  -->  Adam step
+* **How the pieces fit together.** Input `X` is standardized, used to
+  construct the empirical Gram matrix, and passed to the selected penalty.
+  The penalty value and gradient join the loss gradient during the MLP
+  backward pass, and Adam applies the resulting update.
 
 ## What this is NOT
 
@@ -68,16 +59,12 @@ single integer seed.
 
 ## Installation
 
-```bash
-pip install regulo
-```
-
-From source:
+Install from source:
 
 ```bash
 git clone https://github.com/sachncs/regulo
 cd regulo
-pip install -e .
+python -m pip install -e .
 ```
 
 **Requirements:** Python ≥ 3.10, NumPy ≥ 1.23, SciPy ≥ 1.9.
