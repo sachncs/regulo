@@ -53,7 +53,7 @@ dev = [
 Homepage = "https://github.com/sachncs/regulo"
 Repository = "https://github.com/sachncs/regulo"
 Issues = "https://github.com/sachncs/regulo/issues"
-Documentation = "https://github.com/sachncs/regulo/tree/master/docs"
+Documentation = "https://sachncs.github.io/regulo/"
 Changelog = "https://github.com/sachncs/regulo/blob/master/CHANGELOG.md"
 Logo = "https://raw.githubusercontent.com/sachncs/regulo/master/assets/logo.svg"
 
