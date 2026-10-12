@@ -182,6 +182,13 @@ def test_fit_validates_validation_data():
             np.zeros((1, 2)),
             np.zeros((2, 1)),
         )
+    with pytest.raises(ValueError, match="provided together"):
+        runner.fit(
+            np.zeros((2, 2)),
+            np.zeros((2, 1)),
+            np.zeros((1, 2)),
+            None,
+        )
 
 
 def test_invalid_loss_task_rejected():
@@ -264,6 +271,8 @@ def test_nanguard():
     )
     runner.mlp.weights[0][0, 0] = np.nan
     with pytest.raises(FloatingPointError):
+        runner.fit(np.zeros((10, 3)), np.zeros((10, 1)), seed=0)
+    with pytest.raises(RuntimeError, match="single-use"):
         runner.fit(np.zeros((10, 3)), np.zeros((10, 1)), seed=0)
 
 

@@ -49,23 +49,28 @@ def meta(runner: Runner) -> dict:
 
 
 def save(runner: Runner, path: str) -> None:
-    """Persist a Runner using a recoverable directory swap."""
+    """Persist a Runner using a crash-safe directory swap."""
     target = Path(path)
     target.parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(
         tempfile.mkdtemp(prefix=f".{target.name}.", dir=target.parent)
     )
+    backup = target.with_name(f".{target.name}.previous")
     try:
         _save_to_directory(runner, temporary)
-        backup = target.with_name(f".{target.name}.previous")
+        _write_checksums(temporary)
         if backup.exists():
             shutil.rmtree(backup)
         if target.exists():
             os.replace(target, backup)
-        os.replace(temporary, target)
+        try:
+            os.replace(temporary, target)
+        except Exception:
+            if not target.exists() and backup.exists():
+                os.replace(backup, target)
+            raise
         if backup.exists():
             shutil.rmtree(backup)
-        _write_checksums(target)
     except Exception:
         if temporary.exists():
             shutil.rmtree(temporary)
@@ -122,21 +127,40 @@ def snapshot(runner: Runner) -> dict:
 def load(path: str) -> Runner:
     """Reconstruct a Runner from *path*."""
     p = Path(path)
-    with open(p / "meta.json") as f:
-        data = json.load(f)
+    try:
+        with open(p / "meta.json") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError, TypeError) as exc:
+        raise SerializationError("Invalid checkpoint metadata.") from exc
+    if not isinstance(data, dict):
+        raise SerializationError("Checkpoint metadata must be an object.")
     if data.get("schema") != SCHEMA_VERSION:
         raise SerializationError(
             f"Unsupported model schema: {data.get('schema')!r}; "
             f"expected {SCHEMA_VERSION}."
         )
-    major = data["version"].split(".")[0]
+    version = data.get("version")
+    if not isinstance(version, str) or not version or "." not in version:
+        raise SerializationError("Checkpoint metadata has an invalid version.")
+    major = version.split(".")[0]
     lib = __version__.split(".")[0]
     if major != lib:
         raise SerializationError(
-            f"version mismatch: on-disk {data['version']!r}, library {__version__!r}."
+            f"version mismatch: on-disk {version!r}, library {__version__!r}."
         )
+    shape = data.get("shape")
+    if (
+        not isinstance(shape, list)
+        or len(shape) < 2
+        or any(not isinstance(width, int) or width <= 0 for width in shape)
+    ):
+        raise SerializationError("Checkpoint metadata has an invalid shape.")
+    if not isinstance(data.get("lossargs"), dict) or not isinstance(
+        data.get("penaltyargs"), dict
+    ) or not isinstance(data.get("adam"), dict):
+        raise SerializationError("Checkpoint metadata has invalid parameters.")
     _verify_checksums(p)
-    mlp = MLP(data["shape"])
+    mlp = MLP(shape)
     cls = losslookup(data["loss"])
     loss = cls(**data["lossargs"])
     penalty = penaltylookup(data, p)
@@ -165,25 +189,45 @@ def load(path: str) -> Runner:
     adampath = p / "adam.npz"
     if adampath.exists():
         with np.load(adampath, allow_pickle=False) as loaded:
-            runner.adam.clock = int(loaded["clock"])
-            for group in runner.adam.mean:
-                for i in range(len(runner.adam.mean[group])):
+            if "clock" not in loaded.files:
+                raise SerializationError("Checkpoint is missing Adam clock.")
+            clock = loaded["clock"]
+            if clock.shape != () or not np.issubdtype(clock.dtype, np.integer):
+                raise SerializationError("Checkpoint has an invalid Adam clock.")
+            state: dict[str, object] = {
+                "clock": int(clock),
+                "mean": {},
+                "variance": {},
+            }
+            for group, params in (("weights", mlp.weights), ("biases", mlp.biases)):
+                mean: list[np.ndarray | None] = []
+                variance: list[np.ndarray | None] = []
+                for i, param in enumerate(params):
                     keymean = f"{group}_{i}_mean"
                     keyvar = f"{group}_{i}_variance"
-                    if keymean in loaded.files:
-                        runner.adam.mean[group][i] = loaded[keymean]
-                        runner.adam.variance[group][i] = loaded[keyvar]
+                    if keymean in loaded.files and keyvar in loaded.files:
+                        mean_value = loaded[keymean]
+                        variance_value = loaded[keyvar]
+                        if (
+                            mean_value.shape != param.shape
+                            or variance_value.shape != param.shape
+                            or not np.all(np.isfinite(mean_value))
+                            or not np.all(np.isfinite(variance_value))
+                        ):
+                            raise SerializationError(
+                                f"Invalid Adam buffers for {group}[{i}]."
+                            )
+                        mean.append(mean_value)
+                        variance.append(variance_value)
                     else:
-                        runner.adam.mean[group][i] = np.zeros_like(
-                            runner.mlp.weights[i]
-                            if group == "weights"
-                            else runner.mlp.biases[i]
-                        )
-                        runner.adam.variance[group][i] = np.zeros_like(
-                            runner.mlp.weights[i]
-                            if group == "weights"
-                            else runner.mlp.biases[i]
-                        )
+                        mean.append(np.zeros_like(param))
+                        variance.append(np.zeros_like(param))
+                state["mean"][group] = mean  # type: ignore[index]
+                state["variance"][group] = variance  # type: ignore[index]
+            try:
+                runner.adam.load_state(state)
+            except ValueError as exc:
+                raise SerializationError("Invalid Adam state.") from exc
     return runner
 
 
@@ -203,13 +247,18 @@ def _verify_checksums(path: Path) -> None:
     """Reject modified checkpoint payloads with an actionable error."""
     checksum_path = path / "checksums.json"
     if not checksum_path.exists():
-        return
+        raise SerializationError("Checkpoint is missing checksums.json.")
     try:
         checksums = json.loads(checksum_path.read_text())
+        if not isinstance(checksums, dict) or not checksums:
+            raise SerializationError("Invalid checkpoint checksums.")
         for name, expected in checksums.items():
-            if name == "adam.npz" and not (path / name).exists():
-                continue
-            actual = hashlib.sha256((path / name).read_bytes()).hexdigest()
+            if not isinstance(name, str) or not isinstance(expected, str):
+                raise SerializationError("Invalid checkpoint checksums.")
+            candidate = path / name
+            if candidate.parent != path or not candidate.is_file():
+                raise SerializationError(f"Missing checkpoint file {name!r}.")
+            actual = hashlib.sha256(candidate.read_bytes()).hexdigest()
             if actual != expected:
                 raise SerializationError(
                     f"Checkpoint checksum mismatch for {name!r}."

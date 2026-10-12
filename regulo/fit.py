@@ -87,6 +87,7 @@ class Runner:
             )
         self.task = loss.task
         self.history: dict[str, list[float]] = {"train": [], "val": []}
+        self._fit_started = False
 
     def fit(
         self,
@@ -106,12 +107,12 @@ class Runner:
             yval: Validation targets (optional).
             seed: Optional integer seed for mini-batch shuffling.
         """
-        if self.history["train"]:
-            raise RuntimeError(
-                "Runner.fit() is single-use; call reset() first."
-            )
+        if self._fit_started:
+            raise RuntimeError("Runner.fit() is single-use; call reset() first.")
         if self.earlystop and (xval is None or yval is None):
             raise ValueError("earlystop requires xval and yval to be provided.")
+        if (xval is None) != (yval is None):
+            raise ValueError("xval and yval must be provided together.")
         if xtrain.ndim != 2 or xtrain.shape[0] == 0:
             raise ValueError("xtrain must be a non-empty 2D array.")
         if ytrain.shape[0] != xtrain.shape[0]:
@@ -132,6 +133,7 @@ class Runner:
                 raise ValueError(
                     "validation data must contain only finite values."
                 )
+        self._fit_started = True
         count = xtrain.shape[0]
         rng = np.random.default_rng(seed)
         best = float("inf")
@@ -213,6 +215,10 @@ class Runner:
 
             if xval is not None and yval is not None:
                 valpred = self.mlp(xval)
+                if not np.all(np.isfinite(valpred)):
+                    raise FloatingPointError(
+                        f"non-finite validation prediction at epoch {epoch + 1}"
+                    )
                 valcost = self.loss.value(valpred, yval)
                 for i, w in enumerate(self.mlp.weights):
                     if self.penalty.applies(i):
@@ -271,6 +277,7 @@ class Runner:
         self.mlp = MLP(shape, seed=seed)
         self.adam.reset()
         self.history = {"train": [], "val": []}
+        self._fit_started = False
 
     def restart(self, path: str) -> None:
         """Load weights only from a directory produced by :func:`save`.
@@ -291,15 +298,24 @@ class Runner:
                 f"!= in-memory {self.mlp.shape}."
             )
         with np.load(p / "weights.npz", allow_pickle=False) as weights:
+            loaded_weights: list[np.ndarray] = []
             for i, w in enumerate(self.mlp.weights):
                 if f"w{i}" not in weights.files:
                     raise ValueError(f"Missing weight array w{i}.")
-                w[...] = weights[f"w{i}"]
+                loaded = weights[f"w{i}"]
+                if loaded.shape != w.shape or not np.all(np.isfinite(loaded)):
+                    raise ValueError(f"Invalid weight array w{i}.")
+                loaded_weights.append(loaded)
         with np.load(p / "biases.npz", allow_pickle=False) as biases:
+            loaded_biases: list[np.ndarray] = []
             for i, b in enumerate(self.mlp.biases):
                 if f"b{i}" not in biases.files:
                     raise ValueError(f"Missing bias array b{i}.")
-                b[...] = biases[f"b{i}"]
+                loaded = biases[f"b{i}"]
+                if loaded.shape != b.shape or not np.all(np.isfinite(loaded)):
+                    raise ValueError(f"Invalid bias array b{i}.")
+                loaded_biases.append(loaded)
+        self.mlp.load({"weights": loaded_weights, "biases": loaded_biases})
 
     def __repr__(self) -> str:
         return (

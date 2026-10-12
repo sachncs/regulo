@@ -1,5 +1,6 @@
 """Tests for save/load round-trips and version validation."""
 
+import hashlib
 import json
 from importlib.metadata import version
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+import regulo.store as store
 from regulo import __version__
 from regulo.adam import Adam
 from regulo.fit import Runner
@@ -14,6 +16,15 @@ from regulo.loss import Square
 from regulo.net import MLP
 from regulo.penalty import Covridge, Ridge, Sparridge, Void
 from regulo.store import load, meta, save, snapshot
+
+
+def refresh_checksums(target: Path) -> None:
+    checksums = {
+        item.name: hashlib.sha256(item.read_bytes()).hexdigest()
+        for item in target.iterdir()
+        if item.is_file() and item.name != "checksums.json"
+    }
+    (target / "checksums.json").write_text(json.dumps(checksums))
 
 
 def test_version_matches_package_metadata():
@@ -63,7 +74,43 @@ def test_saveloadroundtrip(tmp_path: Path):
         np.testing.assert_array_equal(bn, bo)
     assert loaded.adam.clock == clock
     assert loaded.adam.lr == 1e-2
+    for group in runner.adam.mean:
+        for expected, actual in zip(
+            runner.adam.mean[group], loaded.adam.mean[group], strict=False
+        ):
+            np.testing.assert_array_equal(expected, actual)
     assert (target / "checksums.json").exists()
+
+
+def test_save_replaces_existing_checkpoint(tmp_path: Path):
+    runner = Runner(MLP([2, 2, 1]), Square(), Void(), Adam())
+    target = tmp_path / "replace"
+    save(runner, str(target))
+    save(runner, str(target))
+    save(runner, str(target))
+    assert load(str(target)).mlp.shape == [2, 2, 1]
+
+
+def test_save_restores_previous_checkpoint_when_swap_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    runner = Runner(MLP([2, 2, 1]), Square(), Void(), Adam())
+    target = tmp_path / "rollback"
+    save(runner, str(target))
+    real_replace = store.os.replace
+    calls = 0
+
+    def fail_new_target(source: str | bytes, destination: str | bytes) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("simulated checkpoint swap failure")
+        real_replace(source, destination)
+
+    monkeypatch.setattr(store.os, "replace", fail_new_target)
+    with pytest.raises(OSError, match="swap failure"):
+        save(runner, str(target))
+    assert load(str(target)).mlp.shape == [2, 2, 1]
 
 
 def test_checksum_detects_corruption(tmp_path: Path):
@@ -147,11 +194,8 @@ def test_loadmissingadam(tmp_path: Path):
     target = tmp_path / "no_adam"
     save(runner, str(target))
     (target / "adam.npz").unlink()
-    loaded = load(str(target))
-    assert loaded.adam.clock == 0
-    for group in loaded.adam.mean:
-        for buf in loaded.adam.mean[group]:
-            assert buf is None
+    with pytest.raises(ValueError, match="Missing checkpoint file"):
+        load(str(target))
 
 
 def test_loadpartialadam_initializes_missing_buffers(tmp_path: Path):
@@ -160,9 +204,26 @@ def test_loadpartialadam_initializes_missing_buffers(tmp_path: Path):
     save(runner, str(target))
     (target / "checksums.json").unlink()
     np.savez(target / "adam.npz", clock=np.array(0))
+    refresh_checksums(target)
     loaded = load(str(target))
     for group in loaded.adam.mean:
         assert all(buffer is not None for buffer in loaded.adam.mean[group])
+
+
+def test_load_rejects_invalid_adam_buffers(tmp_path: Path):
+    runner = Runner(MLP([2, 2, 1]), Square(), Void(), Adam())
+    target = tmp_path / "invalid_adam"
+    save(runner, str(target))
+    (target / "checksums.json").unlink()
+    np.savez(
+        target / "adam.npz",
+        clock=np.array(0),
+        weights_0_mean=np.full((1, 1), np.nan),
+        weights_0_variance=np.zeros((2, 2)),
+    )
+    refresh_checksums(target)
+    with pytest.raises(ValueError, match="Invalid Adam buffers"):
+        load(str(target))
 
 
 def test_load_rejects_missing_and_invalid_arrays(tmp_path: Path):
@@ -171,6 +232,7 @@ def test_load_rejects_missing_and_invalid_arrays(tmp_path: Path):
     save(runner, str(missing))
     (missing / "checksums.json").unlink()
     np.savez(missing / "weights.npz", w0=np.zeros((2, 2)))
+    refresh_checksums(missing)
     with pytest.raises(ValueError, match="Missing weight"):
         load(str(missing))
 
@@ -182,6 +244,7 @@ def test_load_rejects_missing_and_invalid_arrays(tmp_path: Path):
         b0=np.zeros((1, 2)),
         b1=np.full((1, 1), np.nan),
     )
+    refresh_checksums(invalid)
     with pytest.raises(ValueError, match="Invalid bias"):
         load(str(invalid))
 
@@ -252,6 +315,63 @@ def test_load_rejects_unknown_schema(tmp_path: Path):
     data["schema"] = 999
     (target / "meta.json").write_text(json.dumps(data))
     with pytest.raises(ValueError, match="schema"):
+        load(str(target))
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("version", "invalid", "invalid version"),
+        ("shape", [3], "invalid shape"),
+        ("lossargs", [], "invalid parameters"),
+    ],
+)
+def test_load_rejects_invalid_metadata(
+    tmp_path: Path, field: str, value: object, message: str
+):
+    runner = Runner(MLP([3, 4, 1]), Square(), Void(), Adam())
+    target = tmp_path / field
+    save(runner, str(target))
+    data = json.loads((target / "meta.json").read_text())
+    data[field] = value
+    (target / "meta.json").write_text(json.dumps(data))
+    refresh_checksums(target)
+    with pytest.raises(ValueError, match=message):
+        load(str(target))
+
+
+def test_load_rejects_missing_or_non_object_metadata(tmp_path: Path):
+    missing = tmp_path / "missing_meta"
+    missing.mkdir()
+    with pytest.raises(ValueError, match="Invalid checkpoint metadata"):
+        load(str(missing))
+
+    non_object = tmp_path / "non_object_meta"
+    non_object.mkdir()
+    (non_object / "meta.json").write_text("[]")
+    with pytest.raises(ValueError, match="must be an object"):
+        load(str(non_object))
+
+
+def test_load_rejects_invalid_adam_clock(tmp_path: Path):
+    runner = Runner(MLP([2, 2, 1]), Square(), Void(), Adam())
+    target = tmp_path / "invalid_clock"
+    save(runner, str(target))
+    (target / "checksums.json").unlink()
+    np.savez(target / "adam.npz", clock=np.array([0]))
+    refresh_checksums(target)
+    with pytest.raises(ValueError, match="invalid Adam clock"):
+        load(str(target))
+
+
+def test_load_rejects_missing_bias_array(tmp_path: Path):
+    runner = Runner(MLP([2, 2, 1]), Square(), Void(), Adam())
+    target = tmp_path / "missing_bias"
+    save(runner, str(target))
+    (target / "checksums.json").unlink()
+    np.savez(target / "biases.npz", b0=np.zeros((1, 2)))
+    refresh_checksums(target)
+    with pytest.raises(ValueError, match="Missing bias"):
         load(str(target))
 
 
