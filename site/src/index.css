@@ -13,6 +13,7 @@
 
 @layer base {
   :root { color-scheme: light; }
+  *, *::before, *::after { box-sizing: border-box; }
   html { scroll-behavior: smooth; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   body { margin: 0; color: #172b35; font-feature-settings: "ss01", "ss02", "cv11"; font-family: "Inter var", "Inter", ui-sans-serif, system-ui, sans-serif; background: #f6f1e8; background-image: linear-gradient(rgba(23,43,53,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(23,43,53,.035) 1px, transparent 1px); background-size: 32px 32px; }
   a { text-decoration: none; }

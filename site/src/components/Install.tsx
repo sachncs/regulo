@@ -6,7 +6,7 @@ export function Install() {
 
   const copy = () => {
     setCopyError(false);
-    navigator.clipboard.writeText("pip install regulo").then(
+    navigator.clipboard.writeText("python -m pip install -e .").then(
       () => {
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1800);
@@ -34,21 +34,20 @@ export function Install() {
               </span>
             </h2>
             <p className="mt-5 text-[17px] leading-relaxed text-ink-300 text-pretty">
-              regulo is on PyPI. Its NumPy and SciPy dependencies are installed
-              with the package, so you are one{" "}
-              <span className="font-mono text-ink-100">pip install</span> away
-              from running the paper.
+              regulo is not publishing a PyPI release yet. Clone the repository
+              and install it in editable mode so the source and experiments stay
+              together.
             </p>
 
             <div className="mt-10 flex items-center justify-center">
               <button
                 onClick={copy}
-                aria-label="Copy pip install regulo command"
+                aria-label="Copy source install command"
                 aria-live="polite"
                 className="group inline-flex items-center gap-3 rounded-full border border-white/10 bg-ink-950/80 px-5 py-3 font-mono text-[14px] text-ink-100 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)] transition-colors hover:border-white/20"
               >
                 <span className="text-ink-500">$</span>
-                <span>pip install regulo</span>
+                <span>pip install -e .</span>
                 <span className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-md border border-white/10 text-ink-300 transition-colors group-hover:text-white">
                   {copied ? (
                     <svg viewBox="0 0 16 16" className="h-3 w-3" fill="currentColor">
@@ -88,12 +87,10 @@ export function Install() {
                 </svg>
               </a>
               <a
-                href="https://pypi.org/project/regulo/"
-                target="_blank"
-                rel="noreferrer"
+                href="#/docs/reproduce"
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[13px] text-white transition-colors hover:bg-white/[0.06]"
               >
-                PyPI
+                Reproduction
                 <svg
                   viewBox="0 0 16 16"
                   className="h-3 w-3"
@@ -104,9 +101,7 @@ export function Install() {
                 </svg>
               </a>
               <a
-                href="https://github.com/sachncs/regulo/blob/master/CHANGELOG.md"
-                target="_blank"
-                rel="noreferrer"
+                href="#/docs/changelog"
                 className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2.5 text-[13px] text-white transition-colors hover:bg-white/[0.06]"
               >
                 Changelog

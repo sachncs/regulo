@@ -1,4 +1,5 @@
 import { Logo } from "./Logo";
+import { docsHref } from "../pages/DocsPage";
 
 const cols = [
   {
@@ -6,17 +7,17 @@ const cols = [
     links: [
       { label: "Source", href: "https://github.com/sachncs/regulo" },
       { label: "Releases", href: "https://github.com/sachncs/regulo/releases" },
-      { label: "Changelog", href: "https://github.com/sachncs/regulo/blob/master/CHANGELOG.md" },
+      { label: "Changelog", href: docsHref("changelog") },
       { label: "Roadmap", href: "https://github.com/sachncs/regulo/issues" },
     ],
   },
   {
     title: "Documentation",
     links: [
-      { label: "API reference", href: "https://github.com/sachncs/regulo/blob/master/docs/api.md" },
-      { label: "Math", href: "https://github.com/sachncs/regulo/blob/master/docs/math.md" },
-      { label: "Reproducing the paper", href: "https://github.com/sachncs/regulo/blob/master/docs/repro.md" },
-      { label: "Limits", href: "https://github.com/sachncs/regulo/blob/master/docs/limits.md" },
+      { label: "API reference", href: docsHref("api") },
+      { label: "Math", href: docsHref("math") },
+      { label: "Reproducing the paper", href: docsHref("reproduce") },
+      { label: "Limits", href: docsHref("limits") },
     ],
   },
   {
@@ -24,8 +25,8 @@ const cols = [
     links: [
       { label: "Issues", href: "https://github.com/sachncs/regulo/issues" },
       { label: "Discussions", href: "https://github.com/sachncs/regulo/discussions" },
-      { label: "Contributing", href: "https://github.com/sachncs/regulo/blob/master/CONTRIBUTING.md" },
-      { label: "Code of conduct", href: "https://github.com/sachncs/regulo/blob/master/CODE_OF_CONDUCT.md" },
+      { label: "Contributing", href: "https://github.com/sachncs/regulo" },
+      { label: "Code of conduct", href: "https://github.com/sachncs/regulo" },
     ],
   },
 ];
@@ -55,10 +56,8 @@ export function Footer() {
                 </svg>
               </a>
               <a
-                href="https://pypi.org/project/regulo/"
-                target="_blank"
-                rel="noreferrer"
-                aria-label="PyPI"
+                href={docsHref("reproduce")}
+                aria-label="Reproduction"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.06] bg-white/[0.03] text-ink-200 transition-colors hover:border-white/10 hover:text-white"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">

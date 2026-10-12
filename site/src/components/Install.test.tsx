@@ -13,7 +13,7 @@ describe("Install", () => {
     render(<Install />);
     fireEvent.click(screen.getByRole("button", { name: /copy/i }));
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Copied"));
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("pip install regulo");
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith("python -m pip install -e .");
   });
 
   it("announces clipboard failure", async () => {

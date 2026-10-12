@@ -15,7 +15,7 @@ export function Hero() {
               regulo is a pure-Python reference implementation for covariance-aware regularizers. Read the formula, inspect the gradient, reproduce the run.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-3">
-              <a href="#install" className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand-700 px-5 font-mono text-[13px] font-medium text-white transition-colors hover:bg-brand-800">pip install regulo <span aria-hidden="true">↗</span></a>
+              <a href="#install" className="inline-flex h-11 items-center gap-2 rounded-lg bg-brand-700 px-5 font-mono text-[13px] font-medium text-white transition-colors hover:bg-brand-800">install from source <span aria-hidden="true">↗</span></a>
               <a href="https://github.com/sachncs/regulo" target="_blank" rel="noreferrer" className="inline-flex h-11 items-center gap-2 rounded-lg border border-ink-300 bg-white/50 px-5 text-[13px] font-medium text-ink-950 transition-colors hover:bg-white">Read the source <span aria-hidden="true">↗</span></a>
             </div>
             <div className="mt-9 grid max-w-lg grid-cols-2 gap-x-6 gap-y-3 border-t border-ink-200 pt-5 font-mono text-[11px] uppercase tracking-[.12em] text-ink-400 sm:grid-cols-4"><span>NumPy + SciPy</span><span>Python 3.10+</span><span>MIT licensed</span><span>95% covered</span></div>
