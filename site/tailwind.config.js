@@ -23,6 +23,12 @@ export default {
           400: "#6477FF", 500: "#4656F5", 600: "#3438D8", 700: "#2727AD",
           800: "#1E1E8A", 900: "#171870",
         },
+        teal: {
+          100: "#d8ebe5", 800: "#1f5f5a",
+        },
+        coral: {
+          700: "#a94f3a",
+        },
       },
       backgroundImage: {
         "grid-fade": "radial-gradient(circle at 50% 0%, rgba(70,86,245,0.18), transparent 60%)",

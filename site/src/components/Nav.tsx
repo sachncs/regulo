@@ -1,30 +1,14 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Logo } from "./Logo";
 
 export function Nav() {
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
-    <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
-        scrolled ? "py-3" : "py-5"
-      }`}
-    >
+    <header className="fixed inset-x-0 top-0 z-50 border-b border-ink-200 bg-[#f6f1e8]/90 backdrop-blur-md">
       <div className="container-x">
         <div
-          className={`flex h-12 items-center justify-between rounded-full px-3 transition-all duration-500 ${
-            scrolled
-              ? "border border-white/10 bg-ink-950/70 backdrop-blur-xl shadow-[0_8px_30px_-12px_rgba(0,0,0,0.5)]"
-              : ""
-          }`}
+          className="flex h-16 items-center justify-between px-1"
         >
           <a href="#top" className="pl-2">
             <Logo />
@@ -94,7 +78,7 @@ export function Nav() {
           </div>
         </div>
         {open && (
-          <nav id="mobile-nav" className="mt-2 grid gap-1 rounded-2xl border border-white/10 bg-ink-950/95 p-2 shadow-xl md:hidden">
+          <nav id="mobile-nav" className="mt-2 grid gap-1 rounded-xl border border-ink-200 bg-[#fffdf8] p-2 shadow-lg md:hidden">
             {[
               ["Product", "#product"],
               ["Penalties", "#penalties"],
