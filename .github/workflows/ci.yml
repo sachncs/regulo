@@ -37,12 +37,7 @@ jobs:
         run: mypy regulo
 
       - name: Run tests with coverage
-        run: |
-          pytest tests/ --tb=short \
-            --cov=regulo \
-            --cov-report=xml \
-            --cov-fail-under=95 \
-            --doctest-modules
+        run: pytest tests/ --tb=short --cov=regulo --cov-report=xml --cov-fail-under=95 --doctest-modules
 
       - name: Build package
         run: |

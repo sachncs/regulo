@@ -107,6 +107,7 @@ def synth(
     extra = rng.standard_normal(size=(n, p - k))
     x = np.hstack([info, extra])
     theta = rng.normal(0.0, tau, size=k) if k > 0 else np.zeros(0)
+    y: np.ndarray
     if k == 0:
         y = np.zeros(n)
     elif nonlinear:
