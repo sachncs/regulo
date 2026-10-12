@@ -23,6 +23,7 @@ def test_version_matches_package_metadata():
 def test_metafields():
     runner = Runner(MLP([3, 4, 1]), Square(), Void(), Adam())
     m = meta(runner)
+    assert m["schema"] == 1
     assert m["version"] == __version__
     assert m["shape"] == [3, 4, 1]
     assert m["loss"] == "square"
@@ -56,12 +57,23 @@ def test_saveloadroundtrip(tmp_path: Path):
 
     loaded = load(str(target))
     assert loaded.mlp.shape == [3, 4, 1]
-    for wn, wo in zip(loaded.mlp.weights, weights):
+    for wn, wo in zip(loaded.mlp.weights, weights, strict=False):
         np.testing.assert_array_equal(wn, wo)
-    for bn, bo in zip(loaded.mlp.biases, biases):
+    for bn, bo in zip(loaded.mlp.biases, biases, strict=False):
         np.testing.assert_array_equal(bn, bo)
     assert loaded.adam.clock == clock
     assert loaded.adam.lr == 1e-2
+    assert (target / "checksums.json").exists()
+
+
+def test_checksum_detects_corruption(tmp_path: Path):
+    runner = Runner(MLP([2, 2, 1]), Square(), Void(), Adam())
+    target = tmp_path / "checked"
+    save(runner, str(target))
+    with (target / "weights.npz").open("ab") as handle:
+        handle.write(b"corrupt")
+    with pytest.raises(ValueError, match="checksum"):
+        load(str(target))
 
 
 def test_snapshot():
@@ -73,6 +85,7 @@ def test_snapshot():
         assert m["shape"] == [2, 3, 1]
     finally:
         import shutil
+
         shutil.rmtree(target, ignore_errors=True)
 
 
@@ -115,9 +128,7 @@ def test_restartpreservesoptimizer(tmp_path: Path):
         epochs=2,
     )
     newrunner.restart(str(target))
-    np.testing.assert_allclose(
-        newrunner.mlp.weights[0], runner.mlp.weights[0]
-    )
+    np.testing.assert_allclose(newrunner.mlp.weights[0], runner.mlp.weights[0])
     assert newrunner.adam.clock == 0
     assert newrunner.adam.lr == 1e-3
 
@@ -141,6 +152,38 @@ def test_loadmissingadam(tmp_path: Path):
     for group in loaded.adam.mean:
         for buf in loaded.adam.mean[group]:
             assert buf is None
+
+
+def test_loadpartialadam_initializes_missing_buffers(tmp_path: Path):
+    runner = Runner(MLP([3, 4, 1]), Square(), Void(), Adam())
+    target = tmp_path / "partial_adam"
+    save(runner, str(target))
+    (target / "checksums.json").unlink()
+    np.savez(target / "adam.npz", clock=np.array(0))
+    loaded = load(str(target))
+    for group in loaded.adam.mean:
+        assert all(buffer is not None for buffer in loaded.adam.mean[group])
+
+
+def test_load_rejects_missing_and_invalid_arrays(tmp_path: Path):
+    runner = Runner(MLP([2, 2, 1]), Square(), Void(), Adam())
+    missing = tmp_path / "missing"
+    save(runner, str(missing))
+    (missing / "checksums.json").unlink()
+    np.savez(missing / "weights.npz", w0=np.zeros((2, 2)))
+    with pytest.raises(ValueError, match="Missing weight"):
+        load(str(missing))
+
+    invalid = tmp_path / "invalid"
+    save(runner, str(invalid))
+    (invalid / "checksums.json").unlink()
+    np.savez(
+        invalid / "biases.npz",
+        b0=np.zeros((1, 2)),
+        b1=np.full((1, 1), np.nan),
+    )
+    with pytest.raises(ValueError, match="Invalid bias"):
+        load(str(invalid))
 
 
 def test_saveloadpreservescovridgegram(tmp_path: Path):
@@ -197,5 +240,25 @@ def test_loadraiseswhencovridgegrammissing(tmp_path: Path):
     data["penaltyargs"] = {"lambda1": 0.01, "lambda2": 0.001}
     metapath.write_text(json.dumps(data))
 
-    with pytest.raises(ValueError, match="gram.npy"):
+    with pytest.raises(ValueError, match="checksum"):
         load(str(target))
+
+
+def test_load_rejects_unknown_schema(tmp_path: Path):
+    runner = Runner(MLP([3, 4, 1]), Square(), Void(), Adam())
+    target = tmp_path / "schema"
+    save(runner, str(target))
+    data = json.loads((target / "meta.json").read_text())
+    data["schema"] = 999
+    (target / "meta.json").write_text(json.dumps(data))
+    with pytest.raises(ValueError, match="schema"):
+        load(str(target))
+
+
+def test_store_helpers_reject_unknown_values():
+    from regulo.store import losslookup, serialize
+
+    with pytest.raises(ValueError, match="Unknown loss"):
+        losslookup("unknown")
+    with pytest.raises(TypeError, match="not JSON serializable"):
+        serialize(object())

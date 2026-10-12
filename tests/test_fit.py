@@ -4,8 +4,9 @@ import numpy as np
 import pytest
 
 from regulo.adam import Adam
+from regulo.contracts import TrainingResult
 from regulo.fit import Runner
-from regulo.loss import Square, Softmax
+from regulo.loss import Softmax, Square
 from regulo.net import MLP
 from regulo.penalty import (
     Covridge,
@@ -15,7 +16,7 @@ from regulo.penalty import (
     Sparridge,
     Void,
 )
-from regulo.score import Balanced, Mse
+from regulo.score import Balanced
 
 
 def test_fitdecreasesloss():
@@ -156,7 +157,39 @@ def test_historywithval():
 
 def test_taskderived():
     assert Runner(MLP([3, 1]), Square(), Void(), Adam()).task == "regression"
-    assert Runner(MLP([3, 2]), Softmax(), Void(), Adam()).task == "classification"
+    assert (
+        Runner(MLP([3, 2]), Softmax(), Void(), Adam()).task == "classification"
+    )
+
+
+def test_fit_returns_result_and_rejects_reuse():
+    runner = Runner(MLP([2, 2, 1]), Square(), Void(), Adam(), epochs=2)
+    x = np.zeros((4, 2))
+    y = np.zeros((4, 1))
+    result = runner.fit(x, y, seed=0)
+    assert isinstance(result, TrainingResult)
+    assert result.epochs_ran == 2
+    with pytest.raises(RuntimeError, match="single-use"):
+        runner.fit(x, y, seed=0)
+
+
+def test_fit_validates_validation_data():
+    runner = Runner(MLP([2, 2, 1]), Square(), Void(), Adam(), epochs=1)
+    with pytest.raises(ValueError, match="same sample count"):
+        runner.fit(
+            np.zeros((2, 2)),
+            np.zeros((2, 1)),
+            np.zeros((1, 2)),
+            np.zeros((2, 1)),
+        )
+
+
+def test_invalid_loss_task_rejected():
+    class InvalidLoss(Square):
+        task = "other"
+
+    with pytest.raises(ValueError, match=r"loss\.task"):
+        Runner(MLP([2, 1]), InvalidLoss(), Void(), Adam())
 
 
 def test_probaregressionraises():
@@ -190,7 +223,7 @@ def test_resetreinitializes():
     runner.reset(seed=0)
     assert runner.history["train"] == []
     fresh = MLP([3, 4, 1], seed=0)
-    for wr, wf in zip(runner.mlp.weights, fresh.weights):
+    for wr, wf in zip(runner.mlp.weights, fresh.weights, strict=False):
         np.testing.assert_array_equal(wr, wf)
     assert runner.adam.clock == 0
 
@@ -200,10 +233,20 @@ def test_reproducibleseed():
     x = rng.standard_normal((40, 3))
     y = rng.standard_normal((40, 1))
     r1 = Runner(
-        MLP([3, 8, 1], seed=42), Square(), Ridge(0.001), Adam(), epochs=5, batch=8
+        MLP([3, 8, 1], seed=42),
+        Square(),
+        Ridge(0.001),
+        Adam(),
+        epochs=5,
+        batch=8,
     )
     r2 = Runner(
-        MLP([3, 8, 1], seed=42), Square(), Ridge(0.001), Adam(), epochs=5, batch=8
+        MLP([3, 8, 1], seed=42),
+        Square(),
+        Ridge(0.001),
+        Adam(),
+        epochs=5,
+        batch=8,
     )
     r1.fit(x, y, seed=123)
     r2.fit(x, y, seed=123)
@@ -253,3 +296,27 @@ def test_repr():
     assert "MLP(" in text
     assert "Square(" in text
     assert "Adam(" in text
+
+
+def test_fit_rejects_invalid_training_data():
+    runner = Runner(MLP([2, 3, 1]), Square(), Void(), Adam(), epochs=1)
+    with pytest.raises(ValueError, match="non-empty"):
+        runner.fit(np.empty((0, 2)), np.empty((0, 1)))
+    with pytest.raises(ValueError, match="same sample count"):
+        runner.fit(np.zeros((2, 2)), np.zeros((1, 1)))
+    with pytest.raises(ValueError, match="finite"):
+        runner.fit(np.array([[np.nan, 0.0]]), np.zeros((1, 1)))
+    with pytest.raises(ValueError, match="xval"):
+        runner.fit(
+            np.zeros((2, 2)),
+            np.zeros((2, 1)),
+            np.empty((0, 2)),
+            np.empty((0, 1)),
+        )
+    with pytest.raises(ValueError, match="validation"):
+        runner.fit(
+            np.zeros((2, 2)),
+            np.zeros((2, 1)),
+            np.zeros((1, 2)),
+            np.array([[np.nan]]),
+        )

@@ -44,15 +44,30 @@ from typing import ClassVar
 import numpy as np
 
 __all__ = [
-    "Penalty",
-    "Void",
-    "Ridge",
-    "Lasso",
-    "ElasticNet",
-    "Covridge",
-    "Sparridge",
     "REGISTRY",
+    "Covridge",
+    "ElasticNet",
+    "Lasso",
+    "Penalty",
+    "Ridge",
+    "Sparridge",
+    "Void",
 ]
+
+
+def _square_root_gram(gram: np.ndarray) -> np.ndarray:
+    """Validate a Gram matrix and return its symmetric PSD square root."""
+    if gram.ndim != 2 or gram.shape[0] != gram.shape[1]:
+        raise ValueError("gram must be a square 2D array.")
+    if not np.all(np.isfinite(gram)):
+        raise ValueError("gram must contain only finite values.")
+    if not np.allclose(gram, gram.T, rtol=1e-8, atol=1e-10):
+        raise ValueError("gram must be symmetric.")
+    eigvals, eigvecs = np.linalg.eigh(gram)
+    if np.min(eigvals) < -1e-10:
+        raise ValueError("gram must be positive semidefinite.")
+    eigvals = np.maximum(eigvals, 0.0)
+    return eigvecs @ np.diag(np.sqrt(eigvals)) @ eigvecs.T
 
 
 class Penalty(ABC):
@@ -154,7 +169,7 @@ class Ridge(Penalty):
 
     def __init__(self, lam: float) -> None:
         """Store the non-negative regularization strength."""
-        if lam < 0:
+        if not np.isfinite(lam) or lam < 0:
             raise ValueError("lam must be non-negative.")
         self.lam = lam
 
@@ -179,7 +194,7 @@ class Lasso(Penalty):
 
     def __init__(self, gamma: float) -> None:
         """Store the non-negative sparsity weight."""
-        if gamma < 0:
+        if not np.isfinite(gamma) or gamma < 0:
             raise ValueError("gamma must be non-negative.")
         self.gamma = gamma
 
@@ -203,9 +218,9 @@ class ElasticNet(Penalty):
 
     def __init__(self, alpha: float, gamma: float) -> None:
         """Store mixing parameter and penalty weight."""
-        if not (0.0 <= alpha <= 1.0):
+        if not np.isfinite(alpha) or not (0.0 <= alpha <= 1.0):
             raise ValueError("alpha must be in [0, 1].")
-        if gamma < 0:
+        if not np.isfinite(gamma) or gamma < 0:
             raise ValueError("gamma must be non-negative.")
         self.alpha = alpha
         self.gamma = gamma
@@ -241,15 +256,16 @@ class Covridge(Penalty):
         gram: np.ndarray,
     ) -> None:
         """Store penalties and precompute ``C_{delta,n}^{1/2}``."""
-        if lambda1 < 0 or lambda2 < 0:
+        if (
+            not np.isfinite(lambda1)
+            or not np.isfinite(lambda2)
+            or lambda1 < 0
+            or lambda2 < 0
+        ):
             raise ValueError("lambda1 and lambda2 must be non-negative.")
         self.lambda1 = lambda1
         self.lambda2 = lambda2
-        # Symmetric eigendecomposition: eigh returns real eigenvalues
-        # and avoids the complex round-trip of sqrtm.
-        eigvals, eigvecs = np.linalg.eigh(gram)
-        eigvals = np.maximum(eigvals, 0.0)
-        self.csqrt = eigvecs @ np.diag(np.sqrt(eigvals)) @ eigvecs.T
+        self.csqrt = _square_root_gram(gram)
 
     def applies(self, layer: int) -> bool:
         return layer == 0
@@ -283,13 +299,16 @@ class Sparridge(Penalty):
         gram: np.ndarray,
     ) -> None:
         """Store penalties and precompute ``C_{delta,n}^{1/2}``."""
-        if lambda1 < 0 or gamma < 0:
+        if (
+            not np.isfinite(lambda1)
+            or not np.isfinite(gamma)
+            or lambda1 < 0
+            or gamma < 0
+        ):
             raise ValueError("lambda1 and gamma must be non-negative.")
         self.lambda1 = lambda1
         self.gamma = gamma
-        eigvals, eigvecs = np.linalg.eigh(gram)
-        eigvals = np.maximum(eigvals, 0.0)
-        self.csqrt = eigvecs @ np.diag(np.sqrt(eigvals)) @ eigvecs.T
+        self.csqrt = _square_root_gram(gram)
 
     def applies(self, layer: int) -> bool:
         return layer == 0

@@ -29,7 +29,7 @@ from typing import ClassVar
 
 import numpy as np
 
-__all__ = ["Loss", "Square", "Softmax"]
+__all__ = ["Loss", "Softmax", "Square"]
 
 
 class Loss(ABC):
@@ -40,16 +40,17 @@ class Loss(ABC):
     """
 
     name: ClassVar[str] = ""
+    task: ClassVar[str] = ""
 
     @abstractmethod
     def value(self, prediction: np.ndarray, target: np.ndarray) -> float:
         """Compute the scalar loss."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     @abstractmethod
     def grad(self, prediction: np.ndarray, target: np.ndarray) -> np.ndarray:
         """Compute the gradient of the loss w.r.t. ``prediction``."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}()"
@@ -73,12 +74,30 @@ class Square(Loss):
     """
 
     name: ClassVar[str] = "square"
+    task: ClassVar[str] = "regression"
 
     def value(self, prediction: np.ndarray, target: np.ndarray) -> float:
+        if prediction.shape != target.shape:
+            raise ValueError(
+                f"prediction and target must have identical shapes, got "
+                f"{prediction.shape} and {target.shape}."
+            )
+        if prediction.size == 0:
+            raise ValueError("prediction and target must be non-empty.")
+        if not np.all(np.isfinite(prediction)) or not np.all(
+            np.isfinite(target)
+        ):
+            raise ValueError(
+                "prediction and target must contain finite values."
+            )
         diff = prediction - target
         return float(np.mean(diff**2))
 
     def grad(self, prediction: np.ndarray, target: np.ndarray) -> np.ndarray:
+        if prediction.shape != target.shape or prediction.size == 0:
+            raise ValueError(
+                "prediction and target must have a non-empty equal shape."
+            )
         n = prediction.size
         return 2.0 * (prediction - target) / n
 
@@ -93,8 +112,19 @@ class Softmax(Loss):
     """
 
     name: ClassVar[str] = "softmax"
+    task: ClassVar[str] = "classification"
 
     def value(self, logits: np.ndarray, target: np.ndarray) -> float:
+        if (
+            logits.ndim != 2
+            or target.ndim != 1
+            or logits.shape[0] != target.size
+        ):
+            raise ValueError(
+                "logits must be 2D and target must match its rows."
+            )
+        if target.size == 0:
+            raise ValueError("target must be non-empty.")
         if target.dtype.kind != "i":
             raise TypeError(
                 f"target must be integer dtype, got {target.dtype}."
@@ -114,6 +144,18 @@ class Softmax(Loss):
         return float(-np.mean(np.log(clipped[np.arange(len(target)), target])))
 
     def grad(self, logits: np.ndarray, target: np.ndarray) -> np.ndarray:
+        if logits.ndim != 2 or target.ndim != 1:
+            raise ValueError("logits must be 2D and target must be 1D.")
+        if logits.shape[0] != target.shape[0] or target.size == 0:
+            raise ValueError(
+                "logits and target must have the same non-zero length."
+            )
+        if target.dtype.kind != "i":
+            raise TypeError(
+                f"target must be integer dtype, got {target.dtype}."
+            )
+        if target.min() < 0 or target.max() >= logits.shape[1]:
+            raise ValueError("target contains an invalid class index.")
         shifted = logits - np.max(logits, axis=1, keepdims=True)
         e = np.exp(shifted)
         probs = e / np.sum(e, axis=1, keepdims=True)

@@ -13,6 +13,37 @@ def test_forwardshape():
     assert y.shape == (8, 1)
 
 
+def test_forward_validates_input():
+    net = MLP([2, 3, 1])
+    with pytest.raises(ValueError, match="two-dimensional"):
+        net(np.zeros(2))
+    with pytest.raises(ValueError, match="features"):
+        net(np.zeros((1, 3)))
+    with pytest.raises(ValueError, match="finite"):
+        net(np.array([[np.nan, 0.0]]))
+
+
+def test_load_validates_parameters():
+    net = MLP([2, 3, 1])
+    state = net.state()
+    with pytest.raises(ValueError, match="groups"):
+        net.load({"weights": state["weights"]})
+    with pytest.raises(ValueError, match="layer"):
+        net.load({"weights": [], "biases": []})
+    bad = net.state()
+    bad["weights"][0] = np.zeros((2, 4))
+    with pytest.raises(ValueError, match="shape"):
+        net.load(bad)
+    bad = net.state()
+    bad["biases"][0] = np.zeros((4, 1))
+    with pytest.raises(ValueError, match="bias shape"):
+        net.load(bad)
+    bad = net.state()
+    bad["biases"][0][0, 0] = np.nan
+    with pytest.raises(ValueError, match="finite"):
+        net.load(bad)
+
+
 def test_forwardmultioutput():
     net = MLP([5, 4, 3])
     x = np.random.randn(10, 5)
@@ -86,10 +117,14 @@ def test_stateloadroundtrip():
     state["weights"][0] = np.ones_like(state["weights"][0])
     net.load(state)
     snapshot = net.state()
-    np.testing.assert_allclose(snapshot["weights"][0], np.ones_like(state["weights"][0]))
+    np.testing.assert_allclose(
+        snapshot["weights"][0], np.ones_like(state["weights"][0])
+    )
 
 
-def fdgradient(net: MLP, x: np.ndarray, y: np.ndarray, eps: float = 1e-5) -> dict:
+def fdgradient(
+    net: MLP, x: np.ndarray, y: np.ndarray, eps: float = 1e-5
+) -> dict:
     """Compute weight/bias gradients via central finite differences."""
     out = net(x)
     loss = float(np.mean((out - y) ** 2))
@@ -161,7 +196,7 @@ def test_gradientfdmulti():
 def test_reproducibleseed():
     a = MLP([3, 4, 1], seed=42)
     b = MLP([3, 4, 1], seed=42)
-    for wa, wb in zip(a.weights, b.weights):
+    for wa, wb in zip(a.weights, b.weights, strict=False):
         np.testing.assert_array_equal(wa, wb)
 
 

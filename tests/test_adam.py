@@ -67,12 +67,8 @@ def test_multiplegroups():
     assert len(next["weights"]) == 2
     assert len(next["biases"]) == 2
     for i in range(2):
-        assert not np.array_equal(
-            next["weights"][i], params["weights"][i]
-        )
-        assert not np.array_equal(
-            next["biases"][i], params["biases"][i]
-        )
+        assert not np.array_equal(next["weights"][i], params["weights"][i])
+        assert not np.array_equal(next["biases"][i], params["biases"][i])
 
 
 def test_rejectsinvalidbeta():
@@ -103,3 +99,58 @@ def test_repr():
     text = repr(opt)
     assert "lr=0.01" in text
     assert "beta1=0.5" in text
+
+
+def test_rejects_mismatched_groups_and_shapes():
+    opt = Adam()
+    params = {"weights": [np.zeros((2, 1))]}
+    with pytest.raises(ValueError, match="identical groups"):
+        opt.step(params, {"biases": [np.zeros((1, 1))]})
+    with pytest.raises(ValueError, match="shape"):
+        opt.step(params, {"weights": [np.zeros((1, 1))]})
+    with pytest.raises(ValueError, match="count"):
+        opt.step(params, {"weights": [np.zeros((2, 1)), np.zeros((2, 1))]})
+
+
+def test_rejects_nonfinite_gradient():
+    opt = Adam()
+    params = {"weights": [np.zeros((1, 1))]}
+    with pytest.raises(FloatingPointError, match="Non-finite"):
+        opt.step(params, {"weights": [np.array([[np.nan]])]})
+
+
+def test_state_roundtrip_and_validation():
+    opt = Adam()
+    params = {"weights": [np.zeros((1, 1))]}
+    opt.step(params, {"weights": [np.ones((1, 1))]})
+    state = opt.state()
+    restored = Adam()
+    restored.load_state(state)
+    assert restored.clock == opt.clock
+    with pytest.raises(ValueError, match="Invalid"):
+        restored.load_state({})
+    with pytest.raises(ValueError, match="Invalid"):
+        restored.load_state({"clock": -1, "mean": {}, "variance": {}})
+    with pytest.raises(ValueError, match="equal finite"):
+        restored.load_state(
+            {
+                "clock": 1,
+                "mean": {"weights": [np.zeros((1, 1))]},
+                "variance": {"weights": [np.zeros((2, 1))]},
+            }
+        )
+    with pytest.raises(ValueError, match="buffer list"):
+        restored.load_state(
+            {"clock": 1, "mean": {"w": 1}, "variance": {"w": []}}
+        )
+    with pytest.raises(ValueError, match="inconsistent lengths"):
+        restored.load_state(
+            {"clock": 1, "mean": {"w": [None]}, "variance": {"w": []}}
+        )
+    with pytest.raises(ValueError, match="NumPy arrays"):
+        restored.load_state(
+            {"clock": 1, "mean": {"w": [1]}, "variance": {"w": [1]}}
+        )
+    restored.load_state(
+        {"clock": 1, "mean": {"w": [None]}, "variance": {"w": [None]}}
+    )

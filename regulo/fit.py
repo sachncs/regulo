@@ -35,11 +35,10 @@ network weights, optimizer state, and history.  To re-train from
 scratch, call :meth:`reset` or construct a fresh :class:`Runner`.
 """
 
-from typing import Dict, List, Optional
-
 import numpy as np
 
 from regulo.adam import Adam
+from regulo.contracts import TrainingConfig, TrainingResult, ValidationError
 from regulo.loss import Loss
 from regulo.net import MLP
 from regulo.penalty import Penalty
@@ -73,31 +72,30 @@ class Runner:
         patience: int = 10,
     ) -> None:
         """Initialise the runner with all component objects."""
-        if batch <= 0:
-            raise ValueError("batch must be positive.")
-        if epochs <= 0:
-            raise ValueError("epochs must be positive.")
-        if patience <= 0:
-            raise ValueError("patience must be positive.")
+        config = TrainingConfig(batch, epochs, earlystop, patience)
         self.mlp = mlp
         self.loss = loss
         self.penalty = penalty
         self.adam = adam
-        self.batch = batch
-        self.epochs = epochs
-        self.earlystop = earlystop
-        self.patience = patience
-        self.task = "classification" if loss.name == "softmax" else "regression"
-        self.history: Dict[str, List[float]] = {"train": [], "val": []}
+        self.batch = config.batch
+        self.epochs = config.epochs
+        self.earlystop = config.earlystop
+        self.patience = config.patience
+        if loss.task not in {"regression", "classification"}:
+            raise ValidationError(
+                "loss.task must be regression or classification."
+            )
+        self.task = loss.task
+        self.history: dict[str, list[float]] = {"train": [], "val": []}
 
     def fit(
         self,
         xtrain: np.ndarray,
         ytrain: np.ndarray,
-        xval: Optional[np.ndarray] = None,
-        yval: Optional[np.ndarray] = None,
-        seed: Optional[int] = None,
-    ) -> None:
+        xval: np.ndarray | None = None,
+        yval: np.ndarray | None = None,
+        seed: int | None = None,
+    ) -> TrainingResult:
         """Train the network on *xtrain* with optional validation.
 
         Args:
@@ -108,19 +106,45 @@ class Runner:
             yval: Validation targets (optional).
             seed: Optional integer seed for mini-batch shuffling.
         """
-        if self.earlystop and (xval is None or yval is None):
-            raise ValueError(
-                "earlystop requires xval and yval to be provided."
+        if self.history["train"]:
+            raise RuntimeError(
+                "Runner.fit() is single-use; call reset() first."
             )
+        if self.earlystop and (xval is None or yval is None):
+            raise ValueError("earlystop requires xval and yval to be provided.")
+        if xtrain.ndim != 2 or xtrain.shape[0] == 0:
+            raise ValueError("xtrain must be a non-empty 2D array.")
+        if ytrain.shape[0] != xtrain.shape[0]:
+            raise ValueError(
+                "xtrain and ytrain must have the same sample count."
+            )
+        if xval is not None and yval is not None:
+            if xval.ndim != 2 or xval.shape[0] == 0:
+                raise ValueError("xval must be a non-empty 2D array.")
+            if yval.shape[0] != xval.shape[0]:
+                raise ValueError(
+                    "xval and yval must have the same sample count."
+                )
+        if not np.all(np.isfinite(xtrain)) or not np.all(np.isfinite(ytrain)):
+            raise ValueError("training data must contain only finite values.")
+        if xval is not None and yval is not None:
+            if not np.all(np.isfinite(xval)) or not np.all(np.isfinite(yval)):
+                raise ValueError(
+                    "validation data must contain only finite values."
+                )
         count = xtrain.shape[0]
         rng = np.random.default_rng(seed)
         best = float("inf")
-        wait = self.patience
-        snapshot: Optional[Dict[str, List[np.ndarray]]] = None
+        wait = 0
+        best_epoch: int | None = None
+        stopped_early = False
+        snapshot: (
+            tuple[dict[str, list[np.ndarray]], dict[str, object]] | None
+        ) = None
 
         for epoch in range(self.epochs):
             indices = rng.permutation(count)
-            losses: List[float] = []
+            losses: list[float] = []
             for start in range(0, count, self.batch):
                 end = min(start + self.batch, count)
                 chunk = indices[start:end]
@@ -128,6 +152,11 @@ class Runner:
                 ychunk = ytrain[chunk]
 
                 ypred = self.mlp(xchunk)
+                if not np.all(np.isfinite(ypred)):
+                    raise FloatingPointError(
+                        f"non-finite prediction at epoch {epoch + 1}, "
+                        f"batch {start // self.batch}"
+                    )
                 cost = self.loss.value(ypred, ychunk)
 
                 # Penalty value and gradient over applicable layers.
@@ -135,14 +164,28 @@ class Runner:
                     if self.penalty.applies(i):
                         cost += self.penalty.value(w, i)
                 losses.append(cost)
+                if not np.isfinite(cost):
+                    raise FloatingPointError(
+                        f"non-finite loss at epoch {epoch + 1}, "
+                        f"batch {start // self.batch}"
+                    )
 
                 dloss = self.loss.grad(ypred, ychunk)
                 grads = self.mlp.grad(dloss)
+                if not all(
+                    np.all(np.isfinite(g))
+                    for group in grads.values()
+                    for g in group
+                ):
+                    raise FloatingPointError(
+                        f"non-finite gradient at epoch {epoch + 1}, "
+                        f"batch {start // self.batch}"
+                    )
                 for i, w in enumerate(self.mlp.weights):
                     if self.penalty.applies(i):
-                        grads["weights"][i] = grads["weights"][i] + self.penalty.grad(
-                            w, i
-                        )
+                        grads["weights"][i] = grads["weights"][
+                            i
+                        ] + self.penalty.grad(w, i)
 
                 params = {
                     "weights": self.mlp.weights,
@@ -179,14 +222,25 @@ class Runner:
                 if self.earlystop:
                     if valcost < best:
                         best = valcost
-                        wait = self.patience
-                        snapshot = self.mlp.state()
+                        wait = 0
+                        best_epoch = epoch
+                        snapshot = (self.mlp.state(), self.adam.state())
                     else:
-                        wait -= 1
-                        if wait < 0:
+                        wait += 1
+                        if wait >= self.patience:
                             if snapshot is not None:
-                                self.mlp.load(snapshot)
+                                self.mlp.load(snapshot[0])
+                                self.adam.load_state(snapshot[1])
+                            stopped_early = True
                             break
+
+        return TrainingResult(
+            tuple(self.history["train"]),
+            tuple(self.history["val"]),
+            best_epoch,
+            stopped_early,
+            "patience" if stopped_early else "completed",
+        )
 
     def predict(self, x: np.ndarray) -> np.ndarray:
         """Generate raw predictions (logits for classification)."""
@@ -196,8 +250,7 @@ class Runner:
         """Generate softmax probabilities (classification only)."""
         if self.task != "classification":
             raise NotImplementedError(
-                "proba is only defined for classification "
-                "(Softmax loss) runners."
+                "proba is only defined for classification (Softmax loss) runners."
             )
         logits = self.mlp(x)
         shifted = logits - np.max(logits, axis=1, keepdims=True)
@@ -208,7 +261,7 @@ class Runner:
         """Generate class index predictions (classification only)."""
         return np.argmax(self.proba(x), axis=1)
 
-    def reset(self, seed: Optional[int] = None) -> None:
+    def reset(self, seed: int | None = None) -> None:
         """Reset the network weights and optimizer state.
 
         Re-initialises :attr:`mlp` from scratch (with *seed*) and
@@ -237,12 +290,16 @@ class Runner:
                 f"Architecture mismatch: on-disk {data['shape']} "
                 f"!= in-memory {self.mlp.shape}."
             )
-        weights = np.load(p / "weights.npz")
-        biases = np.load(p / "biases.npz")
-        for i, w in enumerate(self.mlp.weights):
-            w[...] = weights[f"w{i}"]
-        for i, b in enumerate(self.mlp.biases):
-            b[...] = biases[f"b{i}"]
+        with np.load(p / "weights.npz", allow_pickle=False) as weights:
+            for i, w in enumerate(self.mlp.weights):
+                if f"w{i}" not in weights.files:
+                    raise ValueError(f"Missing weight array w{i}.")
+                w[...] = weights[f"w{i}"]
+        with np.load(p / "biases.npz", allow_pickle=False) as biases:
+            for i, b in enumerate(self.mlp.biases):
+                if f"b{i}" not in biases.files:
+                    raise ValueError(f"Missing bias array b{i}.")
+                b[...] = biases[f"b{i}"]
 
     def __repr__(self) -> str:
         return (

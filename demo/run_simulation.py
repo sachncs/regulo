@@ -10,7 +10,7 @@ Run from the repository root after installing regulo::
 """
 
 import argparse
-from typing import Dict, List
+from collections.abc import Callable
 
 import numpy as np
 
@@ -18,7 +18,6 @@ from regulo.adam import Adam
 from regulo.fit import Runner
 from regulo.loss import Square
 from regulo.net import MLP
-from regulo.penalty import ElasticNet, Lasso, Ridge, Sparridge, Void
 from regulo.score import Mse
 from regulo.tune import Scaler, resolve, search
 
@@ -29,7 +28,7 @@ METHODS = ["none", "ridge", "lasso", "elastic_net", "covridge", "sparridge"]
 GRID = [0.01, 0.1, 0.5]
 
 
-def buildgrid(method: str) -> List[Dict[str, float]]:
+def buildgrid(method: str) -> list[dict[str, float]]:
     """Return the hyperparameter search grid for *method*."""
     if method == "none":
         return [{}]
@@ -40,9 +39,7 @@ def buildgrid(method: str) -> List[Dict[str, float]]:
     if method == "elastic_net":
         return [{"alpha": a, "gamma": g} for a in [0.5] for g in GRID]
     if method == "covridge":
-        return [
-            {"lambda1": a, "lambda2": b} for a in GRID for b in GRID
-        ]
+        return [{"lambda1": a, "lambda2": b} for a in GRID for b in GRID]
     if method == "sparridge":
         return [{"lambda1": a, "gamma": g} for a in GRID for g in GRID]
     return []
@@ -54,16 +51,16 @@ def evaluate(
     ytrain: np.ndarray,
     xtest: np.ndarray,
     ytest: np.ndarray,
-    shape: List[int],
+    shape: list[int],
     epochs: int,
     seed: int,
-) -> Dict[str, float]:
+) -> dict[str, float]:
     """Cross-validate, retrain, and evaluate a single method."""
     grid = buildgrid(method)
     if len(grid) == 1 and grid[0] == {}:
-        best: Dict[str, float] = {}
+        best: dict[str, float] = {}
     else:
-        best, _ = search(
+        best_result = search(
             xtrain,
             ytrain,
             shape,
@@ -75,6 +72,9 @@ def evaluate(
             lr=1e-3,
             seed=seed,
         )
+        if best_result[0] is None:
+            raise RuntimeError("search returned no best hyperparameters")
+        best = best_result[0]
 
     scaler = Scaler().fit(xtrain)
     xtrain = scaler.transform(xtrain)
@@ -110,19 +110,19 @@ def split(
 
 
 def execute(
-    factory,
+    factory: Callable[[float, float, int], tuple[np.ndarray, np.ndarray]],
     name: str,
-    shape: List[int],
+    shape: list[int],
     reps: int,
-    rhos: List[float],
-    noises: List[float],
+    rhos: list[float],
+    noises: list[float],
     seed: int,
 ) -> None:
     """Run all methods on a DGP across multiple replications."""
     for rho in rhos:
         for noise in noises:
             print(f"\n{name} -- rho={rho}, noise={noise}")
-            results: Dict[str, List[float]] = {m: [] for m in METHODS}
+            results: dict[str, list[float]] = {m: [] for m in METHODS}
             for rep in range(reps):
                 x, y = factory(rho, noise, rep)
                 xtrain, xtest, ytrain, ytest = split(
@@ -153,20 +153,30 @@ def linear(rho: float, noise: float, rep: int) -> tuple[np.ndarray, np.ndarray]:
     from regulo.data import synth
 
     return synth(
-        n=200, p=20, k=10,
-        rho=rho, noise=noise,
-        nonlinear=False, seed=rep,
+        n=200,
+        p=20,
+        k=10,
+        rho=rho,
+        noise=noise,
+        nonlinear=False,
+        seed=rep,
     )
 
 
-def nonlinear(rho: float, noise: float, rep: int) -> tuple[np.ndarray, np.ndarray]:
+def nonlinear(
+    rho: float, noise: float, rep: int
+) -> tuple[np.ndarray, np.ndarray]:
     """DGP1 wrapper for the nonlinear (sinusoidal) signal."""
     from regulo.data import synth
 
     return synth(
-        n=200, p=20, k=10,
-        rho=rho, noise=noise,
-        nonlinear=True, seed=rep,
+        n=200,
+        p=20,
+        k=10,
+        rho=rho,
+        noise=noise,
+        nonlinear=True,
+        seed=rep,
     )
 
 

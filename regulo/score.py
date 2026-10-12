@@ -24,7 +24,20 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-__all__ = ["Metric", "Mse", "Mae", "Rmse", "R2", "Balanced"]
+__all__ = ["R2", "Balanced", "Mae", "Metric", "Mse", "Rmse"]
+
+
+def _validate_pair(truth: np.ndarray, pred: np.ndarray) -> None:
+    """Validate metric inputs before NumPy can broadcast them silently."""
+    if truth.shape != pred.shape:
+        raise ValueError(
+            f"truth and pred must have identical shapes, got "
+            f"{truth.shape} and {pred.shape}."
+        )
+    if truth.size == 0:
+        raise ValueError("truth and pred must be non-empty.")
+    if not np.all(np.isfinite(truth)) or not np.all(np.isfinite(pred)):
+        raise ValueError("truth and pred must contain only finite values.")
 
 
 class Metric(ABC):
@@ -35,7 +48,7 @@ class Metric(ABC):
     @abstractmethod
     def __call__(self, truth: np.ndarray, pred: np.ndarray) -> float:
         """Compute the metric value."""
-        raise NotImplementedError
+        raise NotImplementedError  # pragma: no cover
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}()"
@@ -51,6 +64,7 @@ class Mse(Metric):
     name = "mse"
 
     def __call__(self, truth: np.ndarray, pred: np.ndarray) -> float:
+        _validate_pair(truth, pred)
         return float(np.mean((truth - pred) ** 2))
 
 
@@ -60,6 +74,7 @@ class Mae(Metric):
     name = "mae"
 
     def __call__(self, truth: np.ndarray, pred: np.ndarray) -> float:
+        _validate_pair(truth, pred)
         return float(np.mean(np.abs(truth - pred)))
 
 
@@ -77,6 +92,7 @@ class Rmse(Metric):
         self.mse = Mse()
 
     def __call__(self, truth: np.ndarray, pred: np.ndarray) -> float:
+        _validate_pair(truth, pred)
         return float(np.sqrt(self.mse(truth, pred)))
 
 
@@ -101,6 +117,7 @@ class R2(Metric):
     name = "r2"
 
     def __call__(self, truth: np.ndarray, pred: np.ndarray) -> float:
+        _validate_pair(truth, pred)
         ssres = float(np.sum((truth - pred) ** 2))
         sstot = float(np.sum((truth - np.mean(truth)) ** 2))
         if sstot == 0.0:
@@ -119,6 +136,7 @@ class Balanced(Metric):
     name = "balanced"
 
     def __call__(self, truth: np.ndarray, pred: np.ndarray) -> float:
+        _validate_pair(truth, pred)
         classes = np.unique(truth)
         recall = []
         for c in classes:

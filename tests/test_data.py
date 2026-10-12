@@ -33,7 +33,7 @@ def test_synthcorrelation():
 
 
 def test_synthnonlinear():
-    x, y_lin = synth(100, 10, 5, 0.25, 0.1, nonlinear=False, seed=1)
+    _, y_lin = synth(100, 10, 5, 0.25, 0.1, nonlinear=False, seed=1)
     _, y_non = synth(100, 10, 5, 0.25, 0.1, nonlinear=True, seed=1)
     assert not np.allclose(y_lin, y_non)
 
@@ -53,13 +53,13 @@ def test_synthhighcorrelation():
 
 
 def test_synthzeronoise():
-    x, y = synth(100, 10, 5, 0.25, 0.0, seed=42)
+    _, y = synth(100, 10, 5, 0.25, 0.0, seed=42)
     _, y2 = synth(100, 10, 5, 0.25, 0.0, seed=42)
     np.testing.assert_allclose(y, y2)
 
 
 def test_synthallinformative():
-    x, y = synth(50, 10, 10, 0.25, 0.1, seed=42)
+    x, _ = synth(50, 10, 10, 0.25, 0.1, seed=42)
     assert x.shape == (50, 10)
 
 

@@ -24,8 +24,6 @@ pass them to :class:`regulo.tune.Scaler` and :class:`Runner` for
 standardization and training.
 """
 
-from typing import Optional, Tuple
-
 import numpy as np
 
 __all__ = ["equicorr", "synth"]
@@ -49,9 +47,7 @@ def equicorr(k: int, rho: float) -> np.ndarray:
     if k <= 0:
         raise ValueError("k must be positive.")
     if k > 1 and not (-1.0 / (k - 1) < rho < 1.0):
-        raise ValueError(
-            f"rho must be in (-1/(k-1), 1) for k={k}; got {rho}."
-        )
+        raise ValueError(f"rho must be in (-1/(k-1), 1) for k={k}; got {rho}.")
     sigma = np.full((k, k), rho)
     np.fill_diagonal(sigma, 1.0)
     return sigma
@@ -65,8 +61,8 @@ def synth(
     noise: float,
     tau: float = 1.0,
     nonlinear: bool = False,
-    seed: Optional[int] = None,
-) -> Tuple[np.ndarray, np.ndarray]:
+    seed: int | None = None,
+) -> tuple[np.ndarray, np.ndarray]:
     """Generate synthetic data according to the paper's DGP.
 
     The first ``k`` features are drawn from a multivariate normal
@@ -100,9 +96,7 @@ def synth(
     if tau < 0:
         raise ValueError("tau must be non-negative.")
     if k > 1 and not (-1.0 / (k - 1) < rho < 1.0):
-        raise ValueError(
-            f"rho must be in (-1/(k-1), 1) for k={k}; got {rho}."
-        )
+        raise ValueError(f"rho must be in (-1/(k-1), 1) for k={k}; got {rho}.")
 
     rng = np.random.default_rng(seed)
     if k > 0:

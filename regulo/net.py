@@ -22,8 +22,6 @@ the forward pass (stored in :attr:`MLP.pre` and :attr:`MLP.post`),
 so :meth:`MLP.__call__` must be invoked before :meth:`MLP.grad`.
 """
 
-from typing import Dict, List, Optional
-
 import numpy as np
 
 __all__ = ["MLP", "xavier"]
@@ -52,10 +50,10 @@ def xavier(fanin: int, fanout: int, rng: np.random.Generator) -> np.ndarray:
 class MLP:
     """Feedforward MLP with ReLU hidden activations and a linear output.
 
-    The network stores its own forward-pass activations and
-    pre-activation values in :attr:`pre` and :attr:`post`
-    respectively so that :meth:`grad` can compute exact gradients
-    without re-running the forward pass.
+    The network stores its own forward-pass activations in semi-private
+    caches so that :meth:`grad` can compute exact gradients without
+    re-running the forward pass. A single MLP instance is not re-entrant;
+    use one instance per concurrent training operation.
 
     Attributes:
         shape: List of layer widths ``[input, hidden_1, ..., output]``.
@@ -63,13 +61,9 @@ class MLP:
         weights: List of weight matrices, one per layer, in
             input-to-output order.
         biases: List of row-vector biases, one per layer.
-        pre: Pre-activation values from the most recent forward
-            pass.  Populated by :meth:`__call__`.
-        post: Activation values from the most recent forward
-            pass.  Populated by :meth:`__call__`.
     """
 
-    def __init__(self, shape: List[int], seed: Optional[int] = None) -> None:
+    def __init__(self, shape: list[int], seed: int | None = None) -> None:
         """Initialise weights with Xavier-uniform and biases to zero.
 
         Args:
@@ -85,31 +79,39 @@ class MLP:
         self.shape = list(shape)
         self.layers = len(shape) - 1
         rng = np.random.default_rng(seed)
-        self.weights: List[np.ndarray] = []
-        self.biases: List[np.ndarray] = []
+        self.weights: list[np.ndarray] = []
+        self.biases: list[np.ndarray] = []
         for i in range(self.layers):
             self.weights.append(xavier(shape[i], shape[i + 1], rng))
             self.biases.append(np.zeros((1, shape[i + 1])))
 
-        self.pre: List[np.ndarray] = []
-        self.post: List[np.ndarray] = []
+        self._pre: list[np.ndarray] = []
+        self._post: list[np.ndarray] = []
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
         """Run the forward pass, caching intermediates for :meth:`grad`."""
-        self.pre = []
-        self.post = [x]
+        if x.ndim != 2:
+            raise ValueError("x must be a two-dimensional array.")
+        if x.shape[1] != self.shape[0]:
+            raise ValueError(
+                f"x has {x.shape[1]} features; expected {self.shape[0]}"
+            )
+        if not np.all(np.isfinite(x)):
+            raise ValueError("x must contain only finite values.")
+        self._pre = []
+        self._post = [x]
         a = x
         for i in range(self.layers):
             z = a @ self.weights[i] + self.biases[i]
-            self.pre.append(z)
+            self._pre.append(z)
             if i < self.layers - 1:
                 a = np.maximum(z, 0.0)
             else:
                 a = z
-            self.post.append(a)
+            self._post.append(a)
         return a
 
-    def grad(self, dloss: np.ndarray) -> Dict[str, List[np.ndarray]]:
+    def grad(self, dloss: np.ndarray) -> dict[str, list[np.ndarray]]:
         """Compute parameter gradients via back-propagation.
 
         Assumes :meth:`__call__` has been invoked immediately before
@@ -122,32 +124,48 @@ class MLP:
             Dictionary with ``"weights"`` and ``"biases"`` lists,
             each in input-to-output order.
         """
-        if not self.post:
+        if not self._post:
             raise RuntimeError("__call__ must be invoked before grad().")
-        wgrads: List[np.ndarray] = []
-        bgrads: List[np.ndarray] = []
+        wgrads: list[np.ndarray] = []
+        bgrads: list[np.ndarray] = []
         delta = dloss
         for i in reversed(range(self.layers)):
-            prev = self.post[i]
+            prev = self._post[i]
             dw = prev.T @ delta
             db = np.sum(delta, axis=0, keepdims=True)
             wgrads.insert(0, dw)
             bgrads.insert(0, db)
             if i > 0:
                 delta = delta @ self.weights[i].T
-                z = self.pre[i - 1]
+                z = self._pre[i - 1]
                 delta *= (z > 0.0).astype(delta.dtype)
         return {"weights": wgrads, "biases": bgrads}
 
-    def state(self) -> Dict[str, List[np.ndarray]]:
+    def state(self) -> dict[str, list[np.ndarray]]:
         """Return deep copies of all current parameters."""
         return {
             "weights": [w.copy() for w in self.weights],
             "biases": [b.copy() for b in self.biases],
         }
 
-    def load(self, params: Dict[str, List[np.ndarray]]) -> None:
+    def load(self, params: dict[str, list[np.ndarray]]) -> None:
         """Replace all parameters (deep-copied from *params*)."""
+        if set(params) != {"weights", "biases"}:
+            raise ValueError("params must contain weights and biases groups.")
+        if (
+            len(params["weights"]) != self.layers
+            or len(params["biases"]) != self.layers
+        ):
+            raise ValueError("params must contain one array per network layer.")
+        for i, (weight, bias) in enumerate(
+            zip(params["weights"], params["biases"], strict=False)
+        ):
+            if weight.shape != (self.shape[i], self.shape[i + 1]):
+                raise ValueError(f"Invalid weight shape for layer {i}.")
+            if bias.shape != (1, self.shape[i + 1]):
+                raise ValueError(f"Invalid bias shape for layer {i}.")
+            if not np.all(np.isfinite(weight)) or not np.all(np.isfinite(bias)):
+                raise ValueError("Network parameters must be finite.")
         self.weights = [w.copy() for w in params["weights"]]
         self.biases = [b.copy() for b in params["biases"]]
 

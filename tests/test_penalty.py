@@ -15,7 +15,9 @@ from regulo.penalty import (
 )
 
 
-def fdgradient(penalty: Penalty, weight: np.ndarray, eps: float = 1e-5) -> np.ndarray:
+def fdgradient(
+    penalty: Penalty, weight: np.ndarray, eps: float = 1e-5
+) -> np.ndarray:
     """Compute penalty gradient via central finite differences."""
     grad = np.zeros_like(weight)
     for r in range(weight.shape[0]):
@@ -180,6 +182,15 @@ def test_covridgenegativelambdaraises():
         Covridge(lambda1=-0.1, lambda2=0.1, gram=np.eye(2))
 
 
+def test_covridge_rejects_invalid_gram():
+    with pytest.raises(ValueError, match="square"):
+        Covridge(0.1, 0.1, np.zeros((2, 3)))
+    with pytest.raises(ValueError, match="symmetric"):
+        Covridge(0.1, 0.1, np.array([[1.0, 2.0], [0.0, 1.0]]))
+    with pytest.raises(ValueError, match="positive semidefinite"):
+        Covridge(0.1, 0.1, np.diag([1.0, -1.0]))
+
+
 def test_covridgezeroweights():
     w = np.zeros((3, 2))
     reg = Covridge(lambda1=0.5, lambda2=0.25, gram=np.eye(3))
@@ -262,7 +273,14 @@ def test_voidappliesall():
 
 
 def test_registrycomplete():
-    assert set(REGISTRY) == {"none", "ridge", "lasso", "elastic_net", "covridge", "sparridge"}
+    assert set(REGISTRY) == {
+        "none",
+        "ridge",
+        "lasso",
+        "elastic_net",
+        "covridge",
+        "sparridge",
+    }
 
 
 def test_eachpenaltyhasname():
@@ -284,8 +302,12 @@ def test_sparridgeoffdiaggram():
     rng = np.random.default_rng(0)
     w = rng.standard_normal((4, 3))
     gram = np.array(
-        [[2.0, 0.5, 0.5, 0.5], [0.5, 2.0, 0.5, 0.5],
-         [0.5, 0.5, 2.0, 0.5], [0.5, 0.5, 0.5, 2.0]]
+        [
+            [2.0, 0.5, 0.5, 0.5],
+            [0.5, 2.0, 0.5, 0.5],
+            [0.5, 0.5, 2.0, 0.5],
+            [0.5, 0.5, 0.5, 2.0],
+        ]
     )
     reg = Sparridge(lambda1=0.3, gamma=0.1, gram=gram)
     cw = reg.csqrt @ w

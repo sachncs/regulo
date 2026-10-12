@@ -25,6 +25,14 @@ def test_squareknown():
     assert loss.value(ypred, truth) == 1.0
 
 
+def test_square_rejects_broadcasting_and_empty():
+    loss = Square()
+    with pytest.raises(ValueError, match="identical shapes"):
+        loss.value(np.zeros((2, 1)), np.zeros((2,)))
+    with pytest.raises(ValueError, match="non-empty"):
+        loss.value(np.empty((0, 1)), np.empty((0, 1)))
+
+
 def test_squaregradshape():
     ypred = np.random.randn(8, 3)
     truth = np.random.randn(8, 3)
@@ -65,6 +73,19 @@ def test_softmaxgradshape():
     assert grad.shape == (8, 3)
 
 
+def test_softmaxgrad_validates_targets():
+    loss = Softmax()
+    logits = np.zeros((2, 3))
+    with pytest.raises(ValueError):
+        loss.grad(logits, np.array([0]))
+    with pytest.raises(TypeError):
+        loss.grad(logits, np.array([0.0, 1.0]))
+    with pytest.raises(ValueError):
+        loss.grad(logits, np.array([0, 3]))
+    with pytest.raises(ValueError, match="2D"):
+        loss.grad(np.zeros(3), np.array([0]))
+
+
 def test_softmaxgradsumzero():
     logits = np.random.randn(8, 3)
     target = np.random.randint(0, 3, size=(8,))
@@ -86,6 +107,14 @@ def test_softmaxrejectsoutofrange():
     loss = Softmax()
     with pytest.raises(ValueError):
         loss.value(logits, target)
+
+
+def test_softmaxvalue_rejects_empty_and_shape_mismatch():
+    loss = Softmax()
+    with pytest.raises(ValueError, match="2D"):
+        loss.value(np.zeros(3), np.array([0]))
+    with pytest.raises(ValueError, match="non-empty"):
+        loss.value(np.zeros((0, 2)), np.array([], dtype=int))
 
 
 def test_softmaxsingleclass():

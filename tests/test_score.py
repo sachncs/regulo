@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from regulo.score import Balanced, Mae, Metric, Mse, R2, Rmse
+from regulo.score import R2, Balanced, Mae, Metric, Mse, Rmse
 
 
 def test_metricabstract():
@@ -82,3 +82,10 @@ def test_protocol():
 def test_repr():
     assert repr(Mse()) == "Mse()"
     assert repr(Mae()) == "Mae()"
+
+
+def test_metrics_reject_broadcasting_and_empty_inputs():
+    with pytest.raises(ValueError, match="identical shapes"):
+        Mse()(np.zeros((2, 1)), np.zeros((2,)))
+    with pytest.raises(ValueError, match="non-empty"):
+        Mae()(np.array([]), np.array([]))

@@ -5,7 +5,7 @@ penalty construction from method-name dispatch, and exhaustive
 grid search over hyperparameter dictionaries.
 """
 
-from typing import Iterator, List, Optional, Tuple
+from collections.abc import Iterator
 
 import numpy as np
 
@@ -13,14 +13,14 @@ from regulo.adam import Adam
 from regulo.fit import Runner
 from regulo.loss import Loss
 from regulo.net import MLP
-from regulo.penalty import Penalty, REGISTRY
+from regulo.penalty import REGISTRY, Penalty
 
-__all__ = ["kfold", "Scaler", "resolve", "search"]
+__all__ = ["Scaler", "kfold", "resolve", "search"]
 
 
 def kfold(
-    n: int, folds: int, seed: Optional[int] = None
-) -> Iterator[Tuple[np.ndarray, np.ndarray]]:
+    n: int, folds: int, seed: int | None = None
+) -> Iterator[tuple[np.ndarray, np.ndarray]]:
     """Yield ``(train, val)`` index tuples for *folds* folds.
 
     Each fold uses a contiguous slice of a shuffled permutation;
@@ -56,23 +56,32 @@ class Scaler:
     name = "scaler"
 
     def __init__(self) -> None:
-        self.mean: Optional[np.ndarray] = None
-        self.std: Optional[np.ndarray] = None
+        self.mean: np.ndarray | None = None
+        self.std: np.ndarray | None = None
 
     def fit(self, x: np.ndarray) -> "Scaler":
         """Compute per-column mean and standard deviation."""
+        if x.ndim != 2 or x.shape[0] == 0:
+            raise ValueError("x must be a non-empty 2D array.")
+        if not np.all(np.isfinite(x)):
+            raise ValueError("x must contain only finite values.")
         self.mean = np.mean(x, axis=0)
         self.std = np.std(x, axis=0)
         # Guard against constant columns (std == 0) so transform does
         # not produce NaN.
         if self.std is not None:
-            self.std = np.where(self.std == 0.0, 1.0, self.std)
+            floor = np.sqrt(np.finfo(float).eps)
+            self.std = np.where(self.std <= floor, 1.0, self.std)
         return self
 
     def transform(self, x: np.ndarray) -> np.ndarray:
         """Apply the fitted standardization."""
         if self.mean is None or self.std is None:
             raise RuntimeError("Scaler has not been fit.")
+        if x.ndim != 2 or x.shape[1] != self.mean.shape[0]:
+            raise ValueError("x has an incompatible feature shape.")
+        if not np.all(np.isfinite(x)):
+            raise ValueError("x must contain only finite values.")
         return (x - self.mean) / self.std
 
     def fittransform(self, x: np.ndarray) -> np.ndarray:
@@ -83,7 +92,12 @@ class Scaler:
     def __repr__(self) -> str:
         if self.mean is None:
             return "Scaler(unfit)"
-        return f"Scaler(mean={self.mean.tolist()!r}, std={self.std.tolist()!r})"
+        std = self.std
+        if std is None:
+            raise RuntimeError(
+                "Scaler has no standard deviation after fitting."
+            )
+        return f"Scaler(mean={self.mean.tolist()!r}, std={std.tolist()!r})"
 
 
 def resolve(
@@ -100,6 +114,12 @@ def resolve(
     also computed unconditionally for non-geometry methods; the
     small overhead is the price of dispatch simplicity.
     """
+    if xtrain.ndim != 2 or xtrain.shape[0] == 0:
+        raise ValueError("xtrain must be a non-empty 2D array.")
+    if not np.all(np.isfinite(xtrain)):
+        raise ValueError("xtrain must contain only finite values.")
+    if delta < 0:
+        raise ValueError("delta must be non-negative.")
     if name not in REGISTRY:
         raise ValueError(f"Unknown method: {name!r}. Known: {sorted(REGISTRY)}")
     cls = REGISTRY[name]
@@ -120,9 +140,9 @@ def resolve(
 def search(
     x: np.ndarray,
     y: np.ndarray,
-    shape: List[int],
+    shape: list[int],
     method: str,
-    grid: List[dict],
+    grid: list[dict],
     loss: Loss,
     folds: int = 5,
     batch: int = 32,
@@ -130,8 +150,8 @@ def search(
     lr: float = 1e-3,
     earlystop: bool = False,
     patience: int = 10,
-    seed: Optional[int] = None,
-) -> Tuple[Optional[dict], float]:
+    seed: int | None = None,
+) -> tuple[dict | None, float]:
     """Run k-fold cross-validation over a hyperparameter grid.
 
     Each combination in *grid* is evaluated on *folds*
@@ -146,20 +166,33 @@ def search(
         ``(best, score)`` -- the hyperparameters that
         achieved the highest mean fold score and that score.
     """
+    if x.ndim != 2 or x.shape[0] == 0:
+        raise ValueError("x must be a non-empty 2D array.")
+    if y.shape[0] != x.shape[0]:
+        raise ValueError("x and y must have the same sample count.")
+    if not np.all(np.isfinite(x)) or not np.all(np.isfinite(y)):
+        raise ValueError("x and y must contain only finite values.")
+    if len(shape) < 2 or shape[0] != x.shape[1]:
+        raise ValueError("shape must start with the input feature count.")
     if not grid:
         raise ValueError("grid must contain at least one entry.")
     if folds < 2:
         raise ValueError("folds must be at least 2.")
-    task = "classification" if loss.name == "softmax" else "regression"
+    if loss.task not in {"regression", "classification"}:
+        raise ValueError("loss.task must be regression or classification.")
+    task = loss.task
     top = -float("inf")
-    best: Optional[dict] = None
+    best: dict | None = None
     from regulo.score import Balanced, Mse
 
     metric = Balanced() if task == "classification" else Mse()
 
     for params in grid:
-        scores: List[float] = []
-        for train, val in kfold(x.shape[0], folds, seed=seed):
+        scores: list[float] = []
+        for fold_index, (train, val) in enumerate(
+            kfold(x.shape[0], folds, seed=seed)
+        ):
+            fold_seed = None if seed is None else seed + fold_index
             xtrain = x[train]
             xval = x[val]
             ytrain = y[train]
@@ -170,7 +203,7 @@ def search(
             xval = scaler.transform(xval)
 
             penalty = resolve(method, params, xtrain)
-            mlp = MLP(shape, seed=seed)
+            mlp = MLP(shape, seed=fold_seed)
             adam = Adam(lr=lr)
             runner = Runner(
                 mlp,
@@ -187,17 +220,27 @@ def search(
                 ytrain,
                 xval,
                 yval,
-                seed=seed,
+                seed=fold_seed,
             )
             preds = runner.predict(xval)
             if task == "classification":
+                if preds.ndim != 2 or preds.shape[1] != shape[-1]:
+                    raise ValueError("classification output shape is invalid.")
                 classified = runner.classify(xval)
                 score = metric(yval, classified)
             else:
+                if preds.shape != yval.shape:
+                    raise ValueError(
+                        "regression predictions must match validation targets."
+                    )
                 score = -metric(yval, preds)
+            if not np.isfinite(score):
+                continue
             scores.append(score)
 
-        avg = float(np.mean(scores))
+        if not scores:
+            continue
+        avg = float(np.nanmean(scores))
         if avg > top:
             top = avg
             best = dict(params)

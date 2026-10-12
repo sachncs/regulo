@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+from regulo.loss import Square
 from regulo.tune import Scaler, kfold, resolve, search
 
 
@@ -45,9 +46,7 @@ def test_scalerfittransform():
     rng = np.random.default_rng(0)
     x = rng.standard_normal((30, 3))
     s = Scaler().fit(x[:20])
-    np.testing.assert_allclose(
-        s.transform(x[:20]), s.fittransform(x[:20])
-    )
+    np.testing.assert_allclose(s.transform(x[:20]), s.fittransform(x[:20]))
 
 
 def test_scalerconstantcolumn():
@@ -67,6 +66,20 @@ def test_scalerrepr():
     assert "unfit" in repr(s)
     s.fit(np.random.randn(10, 2))
     assert "Scaler(mean=" in repr(s)
+
+
+def test_scaler_validates_input():
+    s = Scaler()
+    with pytest.raises(ValueError, match="non-empty"):
+        s.fit(np.empty((0, 2)))
+    with pytest.raises(ValueError, match="finite"):
+        s.fit(np.array([[np.nan, 0.0]]))
+    s.fit(np.zeros((2, 2)))
+    with pytest.raises(ValueError, match="feature shape"):
+        s.transform(np.zeros((1, 3)))
+    with pytest.raises(ValueError, match="finite"):
+        s.transform(np.array([[np.nan, 0.0]]))
+    assert repr(Scaler()) == "Scaler(unfit)"
 
 
 def test_resolveridge():
@@ -93,6 +106,45 @@ def test_resolveextrakeys():
     x = np.zeros((10, 3))
     with pytest.raises(ValueError):
         resolve("ridge", {"lam": 0.1, "garbage": 1.0}, x)
+
+
+def test_resolve_rejects_invalid_delta_and_data():
+    with pytest.raises(ValueError, match="delta"):
+        resolve("ridge", {"lam": 0.1}, np.zeros((2, 2)), delta=-1)
+    with pytest.raises(ValueError, match="non-empty"):
+        resolve("ridge", {"lam": 0.1}, np.empty((0, 2)))
+    with pytest.raises(ValueError, match="finite"):
+        resolve("ridge", {"lam": 0.1}, np.array([[np.nan, 0.0]]))
+
+
+def test_search_validates_input_shape():
+    with pytest.raises(ValueError, match="non-empty"):
+        search(
+            np.empty((0, 2)),
+            np.empty((0, 1)),
+            [2, 1],
+            "ridge",
+            [{"lam": 0.1}],
+            Square(),
+        )
+    with pytest.raises(ValueError, match="feature count"):
+        search(
+            np.zeros((2, 3)),
+            np.zeros((2, 1)),
+            [2, 1],
+            "ridge",
+            [{"lam": 0.1}],
+            Square(),
+        )
+    with pytest.raises(ValueError, match="finite"):
+        search(
+            np.array([[np.nan, 0.0]]),
+            np.zeros((1, 1)),
+            [2, 1],
+            "ridge",
+            [{"lam": 0.1}],
+            Square(),
+        )
 
 
 def test_searchbest():
