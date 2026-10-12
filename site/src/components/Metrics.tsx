@@ -11,10 +11,10 @@ const pillars = [
   {
     label: "Research-grade",
     title: "A faithful reproduction",
-    desc: "Every formula in the paper is implemented, every gradient is analytical, every experiment is one seed away.",
+    desc: "Every formula in the paper is implemented, with explicit smooth gradients and subgradients for reproducible experiments.",
   },
   {
-    label: "Production-clean",
+    label: "Readable by design",
     title: "Designed to be read",
     desc: "Small modules, typed public API, py.typed marker. The codebase reads like a textbook.",
   },
@@ -36,7 +36,7 @@ export function Metrics() {
           </div>
           <h2 className="mt-6 font-display text-[32px] font-semibold leading-[1.1] tracking-tight text-white sm:text-[44px] text-balance">
             Small surface.{" "}
-            <span className="text-ink-400">Strong guarantees.</span>
+            <span className="text-ink-400">Explicit guarantees.</span>
           </h2>
         </div>
 

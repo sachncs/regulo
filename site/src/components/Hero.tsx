@@ -48,9 +48,10 @@ export function Hero() {
 
           <p className="mx-auto mt-7 max-w-2xl text-[18px] leading-relaxed text-ink-300 sm:text-[20px] text-pretty">
             <span className="text-white">regulo</span> is a pure-Python,
-            NumPy-only reference implementation of covariance-aware
+            NumPy and SciPy reference implementation of covariance-aware
             regularizers for small MLPs. Every penalty is auditable. Every
-            gradient is analytical. Every run is reproducible.
+            smooth gradient is analytical; non-smooth penalties expose
+            explicit subgradients. Every run is seedable.
           </p>
 
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -167,14 +168,14 @@ function HeroVisual() {
                   {"\n"}
                   gram = <span className="text-ink-100">X</span>.T @{" "}
                   <span className="text-ink-100">X</span> / n +{" "}
-                  <span className="text-brand-300">1e-3</span> * I
+                  <span className="text-brand-300">1e-3</span> * np.eye(p)
                   {"\n"}
                   {"\n"}
                   penalty = <span className="text-ink-100">Covridge</span>(
                   {"\n  "}
-                  lam1=<span className="text-brand-300">0.10</span>,
+                  lambda1=<span className="text-brand-300">0.10</span>,
                   {"\n  "}
-                  lam2=<span className="text-brand-300">0.01</span>,
+                  lambda2=<span className="text-brand-300">0.01</span>,
                   {"\n  "}
                   gram=gram,{"\n"}
                   )
@@ -182,7 +183,9 @@ function HeroVisual() {
                   {"\n"}
                   <span className="text-ink-500"># value &amp; gradient</span>
                   {"\n"}
-                  v, g = penalty.value_and_grad(W1)
+                  v = penalty.value(W1, 0)
+                  {"\n"}
+                  g = penalty.grad(W1, 0)
                 </code>
               </pre>
             </div>

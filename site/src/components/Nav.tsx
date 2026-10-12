@@ -3,6 +3,7 @@ import { Logo } from "./Logo";
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -45,6 +46,16 @@ export function Nav() {
             ))}
           </nav>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-ink-200 md:hidden"
+              aria-expanded={open}
+              aria-controls="mobile-nav"
+              aria-label={open ? "Close navigation" : "Open navigation"}
+              onClick={() => setOpen((value) => !value)}
+            >
+              <span aria-hidden="true">{open ? "×" : "☰"}</span>
+            </button>
             <a
               href="https://github.com/sachncs/regulo"
               target="_blank"
@@ -82,6 +93,25 @@ export function Nav() {
             </a>
           </div>
         </div>
+        {open && (
+          <nav id="mobile-nav" className="mt-2 grid gap-1 rounded-2xl border border-white/10 bg-ink-950/95 p-2 shadow-xl md:hidden">
+            {[
+              ["Product", "#product"],
+              ["Penalties", "#penalties"],
+              ["Method", "#method"],
+              ["Reproduce", "#reproduce"],
+            ].map(([label, href]) => (
+              <a
+                key={href}
+                href={href}
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-4 py-3 text-sm text-ink-200 hover:bg-white/[0.06] hover:text-white"
+              >
+                {label}
+              </a>
+            ))}
+          </nav>
+        )}
       </div>
     </header>
   );

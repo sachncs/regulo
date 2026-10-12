@@ -58,7 +58,7 @@ const tabs: Tab[] = [
       },
       { line: "", tokens: [] },
       {
-        line: "gram = x.T @ x / 200 + 1e-3 * I",
+        line: "gram = x.T @ x / 200 + 1e-3 * np.eye(20)",
         tokens: [
           { t: "gram " },
           { t: "= " },
@@ -66,7 +66,7 @@ const tabs: Tab[] = [
           { t: "200", c: "num" },
           { t: " + " },
           { t: "1e-3", c: "num" },
-          { t: " * I" },
+          { t: " * np.eye(20)" },
         ],
       },
       { line: "", tokens: [] },
@@ -99,12 +99,12 @@ const tabs: Tab[] = [
         tokens: [{ t: "    Square", c: "fn" }, { t: "()," }],
       },
       {
-        line: "    Covridge(lam1=0.10, lam2=0.01, gram=gram),",
+        line: "    Covridge(lambda1=0.10, lambda2=0.01, gram=gram),",
         tokens: [
           { t: "    Covridge", c: "fn" },
-          { t: "(lam1=" },
+          { t: "(lambda1=" },
           { t: "0.10", c: "num" },
-          { t: ", lam2=" },
+          { t: ", lambda2=" },
           { t: "0.01", c: "num" },
           { t: ", gram=gram)," },
         ],

@@ -38,7 +38,7 @@ export function Footer() {
           <div>
             <Logo />
             <p className="mt-5 max-w-sm text-[13.5px] leading-relaxed text-ink-400">
-              A pure-Python, NumPy-only reference implementation of
+              A pure-Python NumPy and SciPy reference implementation of
               covariance-aware regularizers. Adaptive Norm-Based Regularization
               for Neural Networks.
             </p>

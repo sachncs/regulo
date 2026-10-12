@@ -11,8 +11,11 @@ import { Footer } from "./components/Footer";
 export default function App() {
   return (
     <div className="relative min-h-screen overflow-x-hidden">
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <Nav />
-      <main>
+      <main id="main-content">
         <Hero />
         <Pillars />
         <Penalties />

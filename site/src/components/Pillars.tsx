@@ -38,7 +38,7 @@ const pillars: Pillar[] = [
   {
     label: "03",
     title: "Reproducible",
-    desc: "A single integer seed pins every run. NumPy and SciPy are the only dependencies. CI matrix spans Linux, macOS, and Windows.",
+    desc: "A single integer seed pins every run. NumPy and SciPy keep the numerical core transparent. CI spans Linux, macOS, and Windows.",
     accent: "from-emerald-400/40 to-emerald-500/0",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5">
@@ -57,11 +57,11 @@ export function Pillars() {
           eyebrow="Overview"
           title={
             <>
-              A regularizer library built{" "}
-              <span className="text-ink-400">without trade-offs.</span>
+            A regularizer library built{" "}
+              <span className="text-ink-400">for readable experiments.</span>
             </>
           }
-          subtitle="regulo ships six penalties, two losses, an MLP, the Adam optimizer, and a Runner — all from-scratch, all in a few hundred lines each."
+          subtitle="regulo ships six penalties, two losses, an MLP, the Adam optimizer, and a Runner — explicit enough to inspect, test, and reproduce."
         />
 
         <div className="mt-16 grid grid-cols-1 gap-4 md:grid-cols-3">

@@ -2,12 +2,17 @@ import { useState } from "react";
 
 export function Install() {
   const [copied, setCopied] = useState(false);
+  const [copyError, setCopyError] = useState(false);
 
   const copy = () => {
-    navigator.clipboard.writeText("pip install regulo").then(() => {
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    });
+    setCopyError(false);
+    navigator.clipboard.writeText("pip install regulo").then(
+      () => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1800);
+      },
+      () => setCopyError(true),
+    );
   };
 
   return (
@@ -25,12 +30,12 @@ export function Install() {
             <h2 className="mt-6 font-display text-[34px] font-semibold leading-[1.05] tracking-tight text-white sm:text-[48px] text-balance">
               One command.{" "}
               <span className="bg-gradient-to-br from-white via-ink-200 to-ink-400 bg-clip-text text-transparent">
-                Zero dependencies to manage.
+                A reproducible starting point.
               </span>
             </h2>
             <p className="mt-5 text-[17px] leading-relaxed text-ink-300 text-pretty">
-              regulo is on PyPI. If you already have NumPy and SciPy, you are
-              one{" "}
+              regulo is on PyPI. Its NumPy and SciPy dependencies are installed
+              with the package, so you are one{" "}
               <span className="font-mono text-ink-100">pip install</span> away
               from running the paper.
             </p>
@@ -38,6 +43,8 @@ export function Install() {
             <div className="mt-10 flex items-center justify-center">
               <button
                 onClick={copy}
+                aria-label="Copy pip install regulo command"
+                aria-live="polite"
                 className="group inline-flex items-center gap-3 rounded-full border border-white/10 bg-ink-950/80 px-5 py-3 font-mono text-[14px] text-ink-100 shadow-[0_8px_30px_-12px_rgba(0,0,0,0.6)] transition-colors hover:border-white/20"
               >
                 <span className="text-ink-500">$</span>
@@ -58,6 +65,9 @@ export function Install() {
                   )}
                 </span>
               </button>
+              <span className="sr-only" role="status">
+                {copyError ? "Copy failed" : copied ? "Copied" : ""}
+              </span>
             </div>
 
             <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">

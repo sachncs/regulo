@@ -1,3 +1,4 @@
+@config "../tailwind.config.js";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,6 +11,10 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+  :focus-visible {
+    outline: 2px solid #7dd3fc;
+    outline-offset: 3px;
   }
   body {
     font-feature-settings: "ss01", "ss02", "cv11";
@@ -44,16 +49,25 @@
 
 @layer components {
   .container-x {
-    @apply mx-auto w-full max-w-7xl px-6 sm:px-8 lg:px-10;
+    width: 100%;
+    max-width: 80rem;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
   }
   .hairline {
-    @apply border-white/10;
+    border-color: rgb(255 255 255 / 0.1);
   }
   .glass {
-    @apply border border-white/10 bg-white/[0.03] backdrop-blur-xl;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.03);
+    backdrop-filter: blur(24px);
   }
   .glass-strong {
-    @apply border border-white/[0.08] bg-white/[0.05] backdrop-blur-2xl;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background: rgb(255 255 255 / 0.05);
+    backdrop-filter: blur(40px);
   }
   .text-balance {
     text-wrap: balance;
@@ -79,6 +93,48 @@
     background-size: 56px 56px;
     mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 80%);
     -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 40%, transparent 80%);
+  }
+  .skip-link {
+    position: fixed;
+    left: 1rem;
+    top: 1rem;
+    z-index: 100;
+    transform: translateY(-6rem);
+    border-radius: 9999px;
+    background: white;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #070a10;
+    transition: transform 150ms ease;
+  }
+  .skip-link:focus {
+    transform: translateY(0);
+  }
+}
+
+@media (min-width: 640px) {
+  .container-x {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container-x {
+    padding-left: 2.5rem;
+    padding-right: 2.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

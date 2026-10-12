@@ -19,7 +19,7 @@ const steps = [
   {
     name: "Penalty",
     code: "f(W) = ‖C^½ W‖²_F + ‖W‖₁",
-    desc: "Adaptive shrinkage, applied analytically.",
+    desc: "Adaptive shrinkage with an explicit gradient or subgradient.",
   },
   {
     name: "MLP",
@@ -49,7 +49,7 @@ export function Method() {
           <p className="mt-5 text-[17px] leading-relaxed text-ink-300 text-pretty">
             Input flows through the Gram matrix into a spectral penalty that
             feeds hand-written backprop into Adam. Every gradient is
-            analytical. Nothing is hidden.
+            explicit. Nothing is hidden.
           </p>
         </div>
 
